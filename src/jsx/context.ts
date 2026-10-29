@@ -213,23 +213,59 @@ export const captureRenderContext = (): (<T>(callback: () => T) => T) => {
 export const createContext = <T>(defaultValue: T): Context<T> => {
   const values = [defaultValue]
   const context: Context<T> = ((props): HtmlEscapedString | Promise<HtmlEscapedString> => {
-    // Resolve the target array once, synchronously: the pop in `.finally()`
-    // below may run later and must operate on the same array as the push.
-    const contextValues = getContextValuesIn(getCurrentStore(), context)
+    const render = (): string | Promise<string> | HtmlEscapedString | Promise<HtmlEscapedString> =>
+      typeof props.children === 'string'
+        ? renderChildren([props.children])
+        : isUntrustedObject(props.children)
+          ? renderUntrustedObject(props.children)
+          : props.children
+            ? (Array.isArray(props.children)
+                ? new JSXFragmentNode('', {}, props.children)
+                : props.children
+              ).toString()
+            : raw('')
+
+    // When AsyncLocalStorage is available and we are inside a render, scope the
+    // provided value to the subtree with a nested zone instead of pushing onto
+    // the current store's stack. The parent store is never mutated, so later
+    // siblings rendered outside this Provider while an async child subtree is
+    // suspended cannot observe the value (React-style positional scoping). Async
+    // continuations inside the subtree inherit the child zone, so `useContext`
+    // after `await` still resolves the provided value.
+    const storage = loadAsyncLocalStorage()
+    const currentStore = getCurrentStore()
+    if (storage && currentStore) {
+      const childStore: RenderStore = new WeakMap()
+      for (const c of globalContexts) {
+        childStore.set(
+          c,
+          c === context
+            ? [readContextValueIn(currentStore, c), props.value]
+            : [readContextValueIn(currentStore, c)]
+        )
+      }
+      return storage.run(childStore, () => {
+        const rendered = render()
+        if (rendered instanceof Promise) {
+          return rendered.then((resString) =>
+            raw(resString, (resString as HtmlEscapedString).callbacks)
+          )
+        }
+        return raw(rendered) as HtmlEscapedString
+      })
+    }
+
+    // Fallback (no AsyncLocalStorage): push the value onto the per-render stack
+    // and pop it once the subtree settles. The pop is deferred to `.finally()`
+    // on a Promise so async continuations that read context after `await` still
+    // resolve the value in this store — at the cost of the documented
+    // degradation that values may be observed by later siblings during the
+    // pending window on runtimes without AsyncLocalStorage.
+    const contextValues = getContextValuesIn(currentStore, context)
     contextValues.push(props.value)
     let rendered
     try {
-      rendered =
-        typeof props.children === 'string'
-          ? renderChildren([props.children])
-          : isUntrustedObject(props.children)
-            ? renderUntrustedObject(props.children)
-            : props.children
-              ? (Array.isArray(props.children)
-                  ? new JSXFragmentNode('', {}, props.children)
-                  : props.children
-                ).toString()
-              : raw('')
+      rendered = render()
     } catch (e) {
       contextValues.pop()
       throw e

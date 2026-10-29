@@ -982,6 +982,26 @@ describe('SVG', () => {
     )
   })
 
+  it('does not leak the svg namespace to a sibling after an async svg child', async () => {
+    const AsyncCircle = async () => {
+      await new Promise((r) => setTimeout(r, 10))
+      return <circle cx='5' />
+    }
+    const template = (
+      <>
+        <svg>
+          <AsyncCircle />
+        </svg>
+        <div strokeWidth='2' />
+      </>
+    )
+    // The element after <svg> is outside the svg namespace, so it must keep HTML
+    // attribute names (camelCase) instead of SVG kebab-case conversion.
+    expect((await template.toString()).toString()).toBe(
+      '<svg><circle cx="5"></circle></svg><div strokeWidth="2"></div>'
+    )
+  })
+
   describe('attribute', () => {
     describe('camelCase', () => {
       test.each`
@@ -1587,6 +1607,64 @@ d.replaceWith(c.content)
       // cross-request leak, and no degradation to the context default.
       expect(adminHtml).toBe('<div>Welcome Admin admin. Secret Data: 42</div>')
       expect(attackerHtml).toBe('<div>Access Denied for attacker</div>')
+    })
+  })
+
+  describe('sibling rendered outside a Provider with an async child', () => {
+    // Regression tests for a leak where a Provider with an async child left
+    // its value pushed on the per-render context stack until the child settled,
+    // so a sibling rendered synchronously after the Provider (outside it) read
+    // the provided value instead of the context default.
+    it('keeps a sibling outside an async Provider subtree at the default value', async () => {
+      const AsyncChild = async () => {
+        await new Promise((r) => setTimeout(r, 10))
+        return <Consumer />
+      }
+      const tree = (
+        <Fragment>
+          <ThemeContext.Provider value='dark'>
+            <AsyncChild />
+          </ThemeContext.Provider>
+          <Consumer />
+        </Fragment>
+      )
+      expect((await tree.toString()).toString()).toBe('<span>dark</span><span>light</span>')
+    })
+
+    it('still resolves the provided value inside the async subtree across await', async () => {
+      const AsyncReader = async () => {
+        await new Promise((r) => setTimeout(r, 10))
+        return <span>{useContext(ThemeContext)}</span>
+      }
+      const tree = (
+        <Fragment>
+          <ThemeContext.Provider value='dark'>
+            <AsyncReader />
+          </ThemeContext.Provider>
+          <Consumer />
+        </Fragment>
+      )
+      // The async child reads the provided value after `await` (no #4582
+      // regression) while the sibling outside the Provider sees the default.
+      expect((await tree.toString()).toString()).toBe('<span>dark</span><span>light</span>')
+    })
+
+    it('does not leak a nested Provider value to a later sibling', async () => {
+      const AsyncChild = async () => {
+        await new Promise((r) => setTimeout(r, 10))
+        return <Consumer />
+      }
+      const tree = (
+        <Fragment>
+          <ThemeContext.Provider value='outer'>
+            <ThemeContext.Provider value='inner'>
+              <AsyncChild />
+            </ThemeContext.Provider>
+          </ThemeContext.Provider>
+          <Consumer />
+        </Fragment>
+      )
+      expect((await tree.toString()).toString()).toBe('<span>inner</span><span>light</span>')
     })
   })
 
