@@ -17,6 +17,16 @@ describe('Pattern', () => {
         reason: 'PatternRouter allows trailing slashes',
         tests: ['Trailing slash > GET /book/'],
       },
+      {
+        reason:
+          'PatternRouter treats `?`/`|` in a static path as regex metacharacters, not literals',
+        tests: [
+          'regex meta characters as literal static characters > GET /a?b/zz matches its own literal path with params',
+          'regex meta characters as literal static characters > GET /a?b/:w does not hijack sibling paths',
+          'regex meta characters as literal static characters > GET /a|b/zz matches its own literal path with params',
+          'regex meta characters as literal static characters > GET /a|b/:w does not hijack /ab/zz',
+        ],
+      },
     ],
     newRouter: () => new PatternRouter(),
   })

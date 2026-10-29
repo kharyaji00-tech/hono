@@ -858,6 +858,62 @@ export const runTest = ({
       })
     })
 
+    describe('regex meta characters as literal static characters', () => {
+      beforeEach(() => {
+        router.add('GET', '/a?b/:w', 'get a?b')
+        router.add('GET', '/a|b/:w', 'get a|b')
+        router.add('GET', '/x{y/:w', 'get x{y')
+        router.add('GET', '/z}/:w', 'get z}')
+        router.add('GET', '/ab/:w', 'get ab')
+      })
+
+      it('GET /a?b/zz matches its own literal path with params', () => {
+        const res = match('GET', '/a?b/zz')
+        expect(res.length).toBe(1)
+        expect(res[0].handler).toEqual('get a?b')
+        expect(res[0].params['w']).toBe('zz')
+      })
+
+      it('GET /a?b/:w does not hijack sibling paths', () => {
+        expect(match('GET', '/b/zz').length).toBe(0)
+        expect(match('GET', '/ab/zz').map(({ handler }) => handler)).toEqual(['get ab'])
+      })
+
+      it('GET /a|b/zz matches its own literal path with params', () => {
+        const res = match('GET', '/a|b/zz')
+        expect(res.length).toBe(1)
+        expect(res[0].handler).toEqual('get a|b')
+        expect(res[0].params['w']).toBe('zz')
+      })
+
+      it('GET /a|b/:w does not hijack /ab/zz', () => {
+        expect(match('GET', '/ab/zz').map(({ handler }) => handler)).toEqual(['get ab'])
+      })
+
+      it('GET /x{y/zz and /z}/zz match their own literal paths', () => {
+        let res = match('GET', '/x{y/zz')
+        expect(res.length).toBe(1)
+        expect(res[0].handler).toEqual('get x{y')
+        expect(res[0].params['w']).toBe('zz')
+        res = match('GET', '/z}/zz')
+        expect(res.length).toBe(1)
+        expect(res[0].handler).toEqual('get z}')
+        expect(res[0].params['w']).toBe('zz')
+      })
+
+      it('braces do not hijack sibling paths', () => {
+        expect(match('GET', '/xy/zz').length).toBe(0)
+        expect(match('GET', '/z/zz').length).toBe(0)
+      })
+
+      it('building matchers with several meta-character routes does not throw', () => {
+        expect(() => {
+          router.match('GET', '/a?b/zz')
+          router.match('GET', '/a|b/zz')
+        }).not.toThrow()
+      })
+    })
+
     describe('REST API', () => {
       beforeEach(() => {
         router.add('GET', '/users/:username{[a-z]+}', 'profile')
