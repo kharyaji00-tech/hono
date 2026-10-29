@@ -1,5 +1,7 @@
 import { UnsupportedPathError } from '../../router'
 import { runTest } from '../common.case.test'
+import { SmartRouter } from '../smart-router/router'
+import { TrieRouter } from '../trie-router/router'
 import { LinearRouter } from './router'
 
 describe('LinearRouter', () => {
@@ -75,6 +77,59 @@ describe('LinearRouter', () => {
     it('GET /products/list', () => {
       const [res] = router.match('GET', '/products/list')
       expect(res.length).toBe(0)
+    })
+  })
+
+  describe('Literal suffix after a `{pattern}` label', () => {
+    it('throws UnsupportedPathError so SmartRouter can fall back', () => {
+      const router = new LinearRouter<string>()
+      router.add('GET', '/:file{.+}.json', 'file')
+      expect(() => {
+        router.match('GET', '/xy')
+      }).toThrowError(UnsupportedPathError)
+    })
+
+    it('SmartRouter (LinearRouter + TrieRouter) falls back and does not overmatch', () => {
+      const router = new SmartRouter<string>({
+        routers: [new LinearRouter(), new TrieRouter()],
+      })
+      router.add('GET', '/:file{.+}.json', 'file')
+
+      let res = router.match('GET', '/xy')[0]
+      expect(res.length).toBe(0)
+
+      res = router.match('GET', '/foo.json')[0]
+      expect(res.length).toBe(0)
+
+      expect(router.activeRouter.name).toBe('TrieRouter')
+    })
+  })
+
+  describe('hono/quick preset parity (LinearRouter + TrieRouter)', () => {
+    const newRouter = () =>
+      new SmartRouter<string>({ routers: [new LinearRouter(), new TrieRouter()] })
+
+    it('reports the full param key for /:a-b', () => {
+      const router = newRouter()
+      router.add('GET', '/:a-b', 'h')
+      const [res] = router.match('GET', '/health')
+      expect(res.length).toBe(1)
+      expect(res[0][0]).toBe('h')
+      expect((res[0][1] as Record<string, string>)['a-b']).toBe('health')
+    })
+
+    it('does not overmatch single-segment paths for /:a-b', () => {
+      const router = newRouter()
+      router.add('GET', '/:a-b', 'h')
+      const [res] = router.match('GET', '/x/y')
+      expect(res.length).toBe(0)
+    })
+
+    it('keeps LinearRouter as the active router for a supported label name', () => {
+      const router = newRouter()
+      router.add('GET', '/:a-b', 'h')
+      router.match('GET', '/health')
+      expect(router.activeRouter.name).toBe('LinearRouter')
     })
   })
 })

@@ -1130,5 +1130,39 @@ export const runTest = ({
         expect(res[0].handler).toBe('all')
       })
     })
+
+    describe('Non-word label name', () => {
+      it('GET /:a-b captures the whole label name as the param key', () => {
+        router.add('GET', '/:a-b', 'h')
+        let res = match('GET', '/xy')
+        expect(res.length).toBe(1)
+        expect(res[0].handler).toBe('h')
+        expect(res[0].params['a-b']).toBe('xy')
+
+        res = match('GET', '/health')
+        expect(res.length).toBe(1)
+        expect(res[0].handler).toBe('h')
+        expect(res[0].params['a-b']).toBe('health')
+
+        res = match('GET', '/xy/b')
+        expect(res.length).toBe(0)
+      })
+
+      it('GET /:a.json captures the dotted label name as the param key', () => {
+        router.add('GET', '/:a.json', 'h')
+        const res = match('GET', '/file')
+        expect(res.length).toBe(1)
+        expect(res[0].handler).toBe('h')
+        expect(res[0].params['a.json']).toBe('file')
+      })
+
+      it('GET /:year-:month captures a label name containing a colon', () => {
+        router.add('GET', '/:year-:month', 'h')
+        const res = match('GET', '/2024')
+        expect(res.length).toBe(1)
+        expect(res[0].handler).toBe('h')
+        expect(res[0].params['year-:month']).toBe('2024')
+      })
+    })
   })
 }
