@@ -112,6 +112,10 @@ export const every = (...middleware: (MiddlewareHandler | Condition)[]): Middlew
             if (res === false) {
               throw new Error('Unmet condition')
             }
+            if (res === true && !c.finalized) {
+              await next()
+              return
+            }
             return res
           },
         ],

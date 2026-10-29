@@ -1,4 +1,5 @@
 import { every, except, some } from '.'
+import type { Context } from '../../context'
 import { Hono } from '../../hono'
 import type { MiddlewareHandler } from '../../types'
 
@@ -208,6 +209,60 @@ describe('every', () => {
 
     expect(await res.text()).toBe('oops')
     expect(middleware2).not.toBeCalled()
+  })
+
+  it('Should continue the chain when a Condition returns true', async () => {
+    const condition = () => true
+    const middleware2 = vi.fn(nextMiddleware)
+
+    app.use('/', every(condition, middleware2))
+    app.get('/', (c) => {
+      return c.text('Hello World')
+    })
+    const res = await app.request('http://localhost/')
+
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('Hello World')
+    expect(middleware2).toBeCalled()
+  })
+
+  it('Should continue the chain when a Condition based on the request returns true', async () => {
+    const notFound = vi.fn((c) => c.text('not found', 404))
+
+    app.use(
+      '/',
+      every((c: Context) => c.req.path === '/')
+    )
+    app.get('/', (c) => {
+      return c.text('Hello World')
+    })
+    app.notFound(notFound)
+    const res = await app.request('http://localhost/')
+
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('Hello World')
+    expect(notFound).not.toBeCalled()
+  })
+
+  it('Should not bypass onError when a Condition returns true and a later middleware throws', async () => {
+    app.use(
+      '/',
+      every(
+        () => true,
+        () => {
+          throw new Error('boom')
+        }
+      )
+    )
+    app.get('/', (c) => {
+      return c.text('Hello World')
+    })
+    app.onError((error, c) => {
+      return c.text(error.message)
+    })
+    const res = await app.request('http://localhost/')
+
+    expect(await res.text()).toBe('boom')
   })
 
   it('Should return the same response a middleware returns if it short-circuits the chain', async () => {
