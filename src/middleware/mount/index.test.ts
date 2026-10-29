@@ -331,4 +331,116 @@ describe('mount()', () => {
       expect(await res.text()).toBe('Fallback from App')
     })
   })
+
+  describe('Mount on parameterized routes', () => {
+    // A handler that reports the path it sees, so we can assert the prefix
+    // is re-expanded to the concrete matched value rather than the pattern.
+    const reportingApp = (req: Request) => new Response('path=' + getPath(req))
+
+    const createSubHono = () => {
+      const sub = new Hono()
+      sub.get('/', (c) => c.text('root:' + c.req.path))
+      sub.get('/hello', (c) => c.text('hello:' + c.req.path))
+      sub.get('/deep/path', (c) => c.text('deep:' + c.req.path))
+      return sub
+    }
+
+    it('Should re-expand a `:version` parameter mount', async () => {
+      const app = new Hono()
+      app.all('/api/:version/*', mount(reportingApp))
+
+      let res = await app.request('/api/v1/hello')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('path=/hello')
+
+      res = await app.request('/api/v2/deep/path')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('path=/deep/path')
+    })
+
+    it('Should make the mounted sub-Hono see `/` when the request is the mount root', async () => {
+      const app = new Hono()
+      app.all(
+        '/api/:version/*',
+        mount((req: Request) => createSubHono().fetch(req))
+      )
+
+      const res = await app.request('/api/v1')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('root:/')
+    })
+
+    it('Should end-to-end route a mounted sub-Hono under a parameter mount', async () => {
+      const sub = createSubHono()
+      const app = new Hono()
+      app.all(
+        '/api/:version/*',
+        mount((req: Request) => sub.fetch(req))
+      )
+
+      let res = await app.request('/api/v1/hello')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('hello:/hello')
+
+      res = await app.request('/api/v1/deep/path')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('deep:/deep/path')
+
+      res = await app.request('/api/v2/not-found')
+      expect(res.status).toBe(404)
+    })
+
+    it('Should re-expand a regex parameter mount (`:id{[0-9]+}`)', async () => {
+      const app = new Hono()
+      app.all('/files/:id{[0-9]+}/*', mount(reportingApp))
+
+      let res = await app.request('/files/123/hello')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('path=/hello')
+
+      res = await app.request('/files/9999/deep/path')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('path=/deep/path')
+    })
+
+    it('Should re-expand multiple leading parameters (`/:org/:repo/*`)', async () => {
+      const app = new Hono()
+      app.all('/:org/:repo/*', mount(reportingApp))
+
+      let res = await app.request('/hono/hono/issues/1')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('path=/issues/1')
+
+      res = await app.request('/a/b/c/d/e')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('path=/c/d/e')
+    })
+
+    it('Should re-expand an intermediate wildcard mount (`/api/*/sub/*`)', async () => {
+      const app = new Hono()
+      app.all('/api/*/sub/*', mount(reportingApp))
+
+      let res = await app.request('/api/foo/sub/hello')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('path=/hello')
+
+      res = await app.request('/api/foo-bar/sub/deep/path')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('path=/deep/path')
+    })
+
+    it('Should mount correctly under a parameterized `app.basePath()`', async () => {
+      const api = new Hono().basePath('/api/:version')
+      api.all('/sub/*', mount(reportingApp))
+
+      // The basePath is merged into the registered route pattern, so the
+      // concrete prefix `/api/v1/sub` must be re-expanded from `c.req.path`.
+      const app = new Hono()
+      app.route('/', api)
+
+      const res = await app.request('/api/v1/sub/hello')
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('path=/hello')
+    })
+  })
 })
