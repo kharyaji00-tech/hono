@@ -43,6 +43,31 @@ describe('jsx-runtime', () => {
     )
   })
 
+  describe('boolean attributes in jsxAttr()', () => {
+    // Mirrors `JSXNode.toStringToBuffer` in `src/jsx/base.ts`: for keys listed in
+    // `booleanAttributes`, `true` renders as a bare empty-value attribute and
+    // `false` omits the attribute entirely. For other keys the boolean is
+    // stringified as the attribute value (matching base.ts fallthrough).
+    it.each(['hidden', 'download', 'disabled', 'checked', 'async'])(
+      'jsxAttr(%s, true) renders an empty-value attribute',
+      (key) => {
+        expect(String(jsxAttr(key, true))).toBe(`${key}=""`)
+      }
+    )
+
+    it.each(['hidden', 'download', 'disabled', 'checked', 'async'])(
+      'jsxAttr(%s, false) omits the attribute',
+      (key) => {
+        expect(String(jsxAttr(key, false))).toBe('')
+      }
+    )
+
+    it('should render "true"/"false" value for non-boolean-attribute keys', () => {
+      expect(String(jsxAttr('testkey', true))).toBe('testkey="true"')
+      expect(String(jsxAttr('testkey', false))).toBe('testkey="false"')
+    })
+  })
+
   it('Should drop style values containing ";" in jsxAttr() to prevent CSS injection', () => {
     expect(
       String(jsxAttr('style', { color: 'red;background:blue', backgroundColor: 'white' }))
