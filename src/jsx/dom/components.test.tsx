@@ -325,6 +325,169 @@ function runner(
         await new Promise((resolve) => setTimeout(resolve))
         expect(root.innerHTML).toBe('<div>Error</div>')
       })
+
+      it('catches an error thrown during an update and recovers without a stale fallback', async () => {
+        const unhandled: unknown[] = []
+        const onRejection = (e: unknown) => unhandled.push(e)
+        process.on('unhandledRejection', onRejection)
+        try {
+          const Thrower = () => {
+            throw new Error('boom')
+          }
+          const Ok = ({ n }: { n: number }) => <div>OK-{n}</div>
+          const App = () => {
+            const [n, setN] = useState(0)
+            return (
+              <div>
+                <button onClick={() => setN(n + 1)}>next</button>
+                <ErrorBoundary fallback={<div>Error</div>}>
+                  {n === 1 ? <Thrower /> : <Ok n={n} />}
+                </ErrorBoundary>
+              </div>
+            )
+          }
+          render(<App />, root)
+          expect(root.innerHTML).toBe('<div><button>next</button><div>OK-0</div></div>')
+
+          // Flip the working subtree into a throwing one via state update.
+          root.querySelector('button')?.click()
+          await new Promise((resolve) => setTimeout(resolve))
+          expect(root.innerHTML).toBe('<div><button>next</button><div>Error</div></div>')
+          // The aborted subtree must not surface as an unhandled rejection
+          // (the pre-fix code crashed with `TypeError ... 'forEach'` in getNextChildren).
+          expect(unhandled).toHaveLength(0)
+
+          // Recover: the fallback element installed by the error path must be removed.
+          root.querySelector('button')?.click()
+          await new Promise((resolve) => setTimeout(resolve))
+          expect(root.innerHTML).toBe('<div><button>next</button><div>OK-2</div></div>')
+          expect(unhandled).toHaveLength(0)
+        } finally {
+          process.off('unhandledRejection', onRejection)
+        }
+      })
+
+      it('replaces the whole failed subtree with the fallback on an update error', async () => {
+        const unhandled: unknown[] = []
+        const onRejection = (e: unknown) => unhandled.push(e)
+        process.on('unhandledRejection', onRejection)
+        try {
+          const Deep = ({ n }: { n: number }) => {
+            if (n === 1) {
+              throw new Error('boom')
+            }
+            return <div>deep-{n}</div>
+          }
+          const App = () => {
+            const [n, setN] = useState(0)
+            return (
+              <main>
+                <button onClick={() => setN(n + 1)}>go</button>
+                <ErrorBoundary fallback={<div>ERROR-FALLBACK</div>}>
+                  <section>
+                    <Deep n={n} />
+                  </section>
+                </ErrorBoundary>
+              </main>
+            )
+          }
+          render(<App />, root)
+          expect(root.innerHTML).toBe(
+            '<main><button>go</button><section><div>deep-0</div></section></main>'
+          )
+
+          // The failed <section> subtree is replaced by the fallback; no stale
+          // content is resurrected next to the fallback, and no rejection occurs.
+          root.querySelector('button')?.click()
+          await new Promise((resolve) => setTimeout(resolve))
+          expect(root.innerHTML).toBe('<main><button>go</button><div>ERROR-FALLBACK</div></main>')
+          expect(unhandled).toHaveLength(0)
+
+          // Recover: the <section> subtree comes back and the fallback is gone.
+          root.querySelector('button')?.click()
+          await new Promise((resolve) => setTimeout(resolve))
+          expect(root.innerHTML).toBe(
+            '<main><button>go</button><section><div>deep-2</div></section></main>'
+          )
+          expect(unhandled).toHaveLength(0)
+        } finally {
+          process.off('unhandledRejection', onRejection)
+        }
+      })
+
+      it('survives repeated error/recovery cycles without stuck DOM', async () => {
+        const unhandled: unknown[] = []
+        const onRejection = (e: unknown) => unhandled.push(e)
+        process.on('unhandledRejection', onRejection)
+        try {
+          const Thrower = () => {
+            throw new Error('boom')
+          }
+          const Ok = ({ n }: { n: number }) => <span>ok-{n}</span>
+          const App = () => {
+            const [n, setN] = useState(0)
+            return (
+              <div>
+                <button onClick={() => setN(n + 1)}>step</button>
+                <ErrorBoundary fallback={<b>err</b>}>
+                  {n % 2 === 1 ? <Thrower /> : <Ok n={n} />}
+                </ErrorBoundary>
+              </div>
+            )
+          }
+          render(<App />, root)
+          const expected: Record<number, string> = {
+            0: '<div><button>step</button><span>ok-0</span></div>',
+            1: '<div><button>step</button><b>err</b></div>',
+            2: '<div><button>step</button><span>ok-2</span></div>',
+            3: '<div><button>step</button><b>err</b></div>',
+            4: '<div><button>step</button><span>ok-4</span></div>',
+          }
+          expect(root.innerHTML).toBe(expected[0])
+          for (let i = 1; i <= 4; i++) {
+            root.querySelector('button')?.click()
+            await new Promise((resolve) => setTimeout(resolve))
+            expect(root.innerHTML).toBe(expected[i])
+          }
+          expect(unhandled).toHaveLength(0)
+        } finally {
+          process.off('unhandledRejection', onRejection)
+        }
+      })
+
+      it('invokes onError for an error thrown during an update', async () => {
+        const unhandled: unknown[] = []
+        const onRejection = (e: unknown) => unhandled.push(e)
+        process.on('unhandledRejection', onRejection)
+        try {
+          const onError = vi.fn()
+          const Thrower = () => {
+            throw new Error('boom')
+          }
+          const App = () => {
+            const [n, setN] = useState(0)
+            return (
+              <div>
+                <button onClick={() => setN(n + 1)}>next</button>
+                <ErrorBoundary fallback={<div>Error</div>} onError={onError}>
+                  {n === 1 ? <Thrower /> : <div>OK-{n}</div>}
+                </ErrorBoundary>
+              </div>
+            )
+          }
+          render(<App />, root)
+          expect(onError).not.toHaveBeenCalled()
+
+          root.querySelector('button')?.click()
+          await new Promise((resolve) => setTimeout(resolve))
+          expect(root.innerHTML).toBe('<div><button>next</button><div>Error</div></div>')
+          expect(onError).toHaveBeenCalledTimes(1)
+          expect(onError.mock.calls[0][0]).toBeInstanceOf(Error)
+          expect(unhandled).toHaveLength(0)
+        } finally {
+          process.off('unhandledRejection', onRejection)
+        }
+      })
     })
   })
 }
