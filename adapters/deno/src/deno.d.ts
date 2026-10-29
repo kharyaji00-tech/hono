@@ -16,12 +16,13 @@ declare namespace Deno {
   }
 
   /**
-   * Get stats with the specified path.
+   * Get stats with the specified path. Resolves symbolic links, so a symlink
+   * pointing at a directory reports `isDirectory: true`.
    *
    * @param path The path to get stats.
    * @returns Stats object.
    */
-  export function lstatSync(path: string): StatsLike
+  export function statSync(path: string): StatsLike
 
   /**
    * Creates a new directory with the specified path.

@@ -3,7 +3,7 @@ import type { ServeStaticOptions } from 'hono/serve-static'
 import { serveStatic as baseServeStatic } from 'hono/serve-static'
 import type { Env, MiddlewareHandler } from 'hono/types'
 
-const { open, lstatSync, errors } = Deno
+const { open, statSync, errors } = Deno
 
 export const serveStatic = <E extends Env = Env>(
   options: ServeStaticOptions<E> = {}
@@ -27,7 +27,7 @@ export const serveStatic = <E extends Env = Env>(
     const isDir = (path: string) => {
       let isDir
       try {
-        const stat = lstatSync(path)
+        const stat = statSync(path)
         isDir = stat.isDirectory
       } catch {}
       return isDir

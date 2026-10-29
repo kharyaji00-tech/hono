@@ -3,7 +3,7 @@ import type { ServeStaticOptions } from '../../middleware/serve-static'
 import { serveStatic as baseServeStatic } from '../../middleware/serve-static'
 import type { Env, MiddlewareHandler } from '../../types'
 
-const { open, lstatSync, errors } = Deno
+const { open, statSync, errors } = Deno
 
 /**
  * @deprecated `hono/deno` will be removed in v5. Install `@hono/deno` and import from there instead.
@@ -30,7 +30,7 @@ export const serveStatic = <E extends Env = Env>(
     const isDir = (path: string) => {
       let isDir
       try {
-        const stat = lstatSync(path)
+        const stat = statSync(path)
         isDir = stat.isDirectory
       } catch {}
       return isDir

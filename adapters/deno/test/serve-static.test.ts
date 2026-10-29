@@ -91,4 +91,23 @@ Deno.test('Serve Static middleware', async () => {
   res = await app.request('http://localhost/static/helloworld/../')
   assertEquals(res.status, 404)
   assertEquals(await res.text(), '404 Not Found')
+
+  res = await app.request('http://localhost/static/symlink')
+  assertEquals(res.status, 200)
+  assertMatch(res.headers.get('Content-Type') || '', /^text\/html/)
+  assertEquals(await res.text(), 'Symlinked!\n')
+
+  res = await app.request('http://localhost/static/symlink/')
+  assertEquals(res.status, 200)
+  assertMatch(res.headers.get('Content-Type') || '', /^text\/html/)
+  assertEquals(await res.text(), 'Symlinked!\n')
+
+  res = await app.request('http://localhost/static/symlink/index.html')
+  assertEquals(res.status, 200)
+  assertMatch(res.headers.get('Content-Type') || '', /^text\/html/)
+  assertEquals(await res.text(), 'Symlinked!\n')
+
+  res = await app.request('http://localhost/static/broken-symlink')
+  assertEquals(res.status, 404)
+  assertEquals(await res.text(), '404 Not Found')
 })
