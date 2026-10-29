@@ -417,6 +417,7 @@ class Hono<
 
   #handleError(err: unknown, c: Context<E>): Response | Promise<Response> {
     if (err instanceof Error) {
+      c.error = err
       return this.errorHandler(err, c)
     }
     throw err

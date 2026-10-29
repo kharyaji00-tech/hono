@@ -1968,6 +1968,56 @@ describe('Hono with `app.route`', () => {
     })
   })
 
+  describe('`c.error` is set inside `onError`', () => {
+    it('Should set `c.error` for a single sync-throwing handler (fast path)', async () => {
+      const app = new Hono()
+      let captured: Error | undefined
+      app.get('/boom', () => {
+        throw new Error('boom')
+      })
+      app.onError((err, c) => {
+        captured = c.error
+        return c.text(err.message, 500)
+      })
+      const res = await app.request('http://localhost/boom')
+      expect(res.status).toBe(500)
+      expect(await res.text()).toBe('boom')
+      expect(captured).toBeInstanceOf(Error)
+      expect(captured?.message).toBe('boom')
+    })
+
+    it('Should set `c.error` for a single async-throwing handler (fast path)', async () => {
+      const app = new Hono()
+      let captured: Error | undefined
+      app.get('/boom', async () => {
+        throw new Error('boom')
+      })
+      app.onError((err, c) => {
+        captured = c.error
+        return c.text(err.message, 500)
+      })
+      const res = await app.request('http://localhost/boom')
+      expect(res.status).toBe(500)
+      expect(await res.text()).toBe('boom')
+      expect(captured).toBeInstanceOf(Error)
+      expect(captured?.message).toBe('boom')
+    })
+
+    it('Should re-throw a non-Error value instead of setting `c.error`', async () => {
+      const app = new Hono()
+      let onErrorCalled = false
+      app.get('/boom', async () => {
+        throw 'string error'
+      })
+      app.onError(() => {
+        onErrorCalled = true
+        return new Response('error', { status: 500 })
+      })
+      await expect(app.request('http://localhost/boom')).rejects.toBe('string error')
+      expect(onErrorCalled).toBe(false)
+    })
+  })
+
   describe('notFound', () => {
     const app = new Hono()
     const sub = new Hono()
