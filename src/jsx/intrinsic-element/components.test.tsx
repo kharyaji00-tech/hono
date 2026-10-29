@@ -557,6 +557,87 @@ describe('intrinsic element', () => {
         )
       })
     })
+
+    describe('dedupe in head-less buffer', () => {
+      it('should keep one copy of duplicate stylesheet links when <head> is absent', () => {
+        const template = (
+          <div>
+            <link rel='stylesheet' href='a.css' precedence='default' />
+            <link rel='stylesheet' href='a.css' precedence='default' />
+          </div>
+        )
+        expect(template.toString()).toBe(
+          '<div><link rel="stylesheet" href="a.css" data-precedence="default"/></div>'
+        )
+      })
+
+      it('should keep the surviving copy inline at the first occurrence when <head> is absent', () => {
+        const template = (
+          <div>
+            <span>before</span>
+            <link rel='stylesheet' href='a.css' precedence='default' />
+            <link rel='stylesheet' href='a.css' precedence='default' />
+            <span>after</span>
+          </div>
+        )
+        expect(template.toString()).toBe(
+          '<div><span>before</span><link rel="stylesheet" href="a.css" data-precedence="default"/><span>after</span></div>'
+        )
+      })
+
+      it('should keep one copy of duplicate async scripts when <head> is absent', () => {
+        const template = (
+          <div>
+            <script src='app.js' async={true} />
+            <script src='app.js' async={true} />
+          </div>
+        )
+        expect(template.toString()).toBe('<div><script src="app.js" async=""></script></div>')
+      })
+
+      it('should keep one copy of duplicate precedence styles when <head> is absent', () => {
+        const template = (
+          <div>
+            <style href='a.css' precedence='default'>
+              {'body { color: red; }'}
+            </style>
+            <style href='a.css' precedence='default'>
+              {'body { color: red; }'}
+            </style>
+          </div>
+        )
+        expect(template.toString()).toBe(
+          '<div><style data-href="a.css" data-precedence="default">body { color: red; }</style></div>'
+        )
+      })
+
+      it('should keep one copy of duplicate meta tags when <head> is absent', () => {
+        const template = (
+          <div>
+            <meta name='description' content='Hello' />
+            <meta name='description' content='Hello' />
+          </div>
+        )
+        expect(template.toString()).toBe('<div><meta name="description" content="Hello"/></div>')
+      })
+
+      it('should hoist and keep one copy when duplicate stylesheet links are in a full document', () => {
+        const template = (
+          <html>
+            <head></head>
+            <body>
+              <div>
+                <link rel='stylesheet' href='a.css' precedence='default' />
+                <link rel='stylesheet' href='a.css' precedence='default' />
+              </div>
+            </body>
+          </html>
+        )
+        expect(template.toString()).toBe(
+          '<html><head><link rel="stylesheet" href="a.css" data-precedence="default"/></head><body><div></div></body></html>'
+        )
+      })
+    })
   })
 
   describe('form element', () => {

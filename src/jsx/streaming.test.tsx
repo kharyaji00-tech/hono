@@ -1278,4 +1278,56 @@ d.replaceWith(c.content)
       ).toBe('[object Promise]')
     })
   })
+
+  describe('document metadata dedupe in streamed chunks', () => {
+    it('keeps one copy of duplicate stylesheet links in a streamed suspense chunk', async () => {
+      const Content = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        return (
+          <div>
+            <link rel='stylesheet' href='a.css' precedence='default' />
+            <link rel='stylesheet' href='a.css' precedence='default' />
+          </div>
+        )
+      }
+      const stream = renderToReadableStream(
+        <Suspense fallback={<p>Loading...</p>}>
+          <Content />
+        </Suspense>
+      )
+      const html = await drainStream(stream)
+      // The surviving copy stays inside the reveal template (not after the script).
+      expect(html).toMatch(
+        /<template data-hono-target="H:\d+"><div><link rel="stylesheet" href="a.css" data-precedence="default"\/><\/div><\/template>/
+      )
+      expect(html).not.toMatch(/<\/script>\s*<link/)
+      expect((html.match(/<link/g) || []).length).toBe(1)
+    })
+
+    it('does not re-insert a single duplicate link whose twin lives in another chunk', async () => {
+      const ContentA = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        return <link rel='stylesheet' href='a.css' precedence='default' />
+      }
+      const ContentB = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        return <link rel='stylesheet' href='a.css' precedence='default' />
+      }
+      const stream = renderToReadableStream(
+        <>
+          <Suspense fallback={<p>Loading A...</p>}>
+            <ContentA />
+          </Suspense>
+          <Suspense fallback={<p>Loading B...</p>}>
+            <ContentB />
+          </Suspense>
+        </>
+      )
+      const html = await drainStream(stream)
+      // Only one stylesheet survives: the first chunk keeps its inline copy and the
+      // second chunk's identical link is de-duped (dropped), not re-emitted.
+      expect((html.match(/<link/g) || []).length).toBe(1)
+      expect(html).toContain('<link rel="stylesheet" href="a.css" data-precedence="default"/>')
+    })
+  })
 })

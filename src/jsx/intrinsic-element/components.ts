@@ -54,7 +54,12 @@ const insertIntoHead: (
     }
 
     if (duped) {
+      const firstIndex = buffer[0].indexOf(tag)
+      const duplicated = buffer[0].split(tag).length - 1 > 1
       buffer[0] = buffer[0].replaceAll(tag, '')
+      if (duplicated && buffer[0].indexOf('</head>') === -1) {
+        buffer[0] = buffer[0].slice(0, firstIndex) + tag + buffer[0].slice(firstIndex)
+      }
     } else if (deDupeByKey || tagName === 'link') {
       tags.push([tag, props, precedence])
     } else {
