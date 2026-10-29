@@ -32,9 +32,14 @@ describe('createRoot', () => {
     expect(rootElement.innerHTML).toBe('<h1>Hello</h1>')
     await new Promise((resolve) => setTimeout(resolve))
     root.unmount()
-    await Promise.resolve()
+    // unmount() must flush synchronously (react-dom/client compatibility):
+    // the container is empty and effect cleanups have run by the time it returns.
     expect(rootElement.innerHTML).toBe('')
     expect(cleanup).toHaveBeenCalled()
+    // still empty/cleaned-up after a microtask, no stale teardown appears later
+    await Promise.resolve()
+    expect(rootElement.innerHTML).toBe('')
+    expect(cleanup).toHaveBeenCalledTimes(1)
   })
 
   it('call render twice', async () => {
@@ -62,6 +67,30 @@ describe('createRoot', () => {
     root.unmount()
     expect(() => root.render(App2)).toThrow('Cannot update an unmounted root')
   })
+
+  it('unmount runs nested effect cleanups synchronously', async () => {
+    const childCleanup = vi.fn()
+    const parentCleanup = vi.fn()
+    const Child = () => {
+      useEffect(() => childCleanup, [])
+      return <p>child</p>
+    }
+    const App = () => {
+      useEffect(() => parentCleanup, [])
+      return <Child />
+    }
+    const root = createRoot(rootElement)
+    root.render(<App />)
+    await new Promise((resolve) => setTimeout(resolve))
+    root.unmount()
+    // No await: both cleanups have run by the time unmount() returns.
+    expect(childCleanup).toHaveBeenCalledTimes(1)
+    expect(parentCleanup).toHaveBeenCalledTimes(1)
+    expect(rootElement.innerHTML).toBe('')
+    await Promise.resolve()
+    expect(childCleanup).toHaveBeenCalledTimes(1)
+    expect(parentCleanup).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('hydrateRoot', () => {
@@ -88,9 +117,13 @@ describe('hydrateRoot', () => {
     expect(rootElement.innerHTML).toBe('<h1>Hello</h1>')
     await new Promise((resolve) => setTimeout(resolve))
     root.unmount()
-    await Promise.resolve()
+    // unmount() must flush synchronously (react-dom/client compatibility):
+    // the container is empty and effect cleanups have run by the time it returns.
     expect(rootElement.innerHTML).toBe('')
     expect(cleanup).toHaveBeenCalled()
+    await Promise.resolve()
+    expect(rootElement.innerHTML).toBe('')
+    expect(cleanup).toHaveBeenCalledTimes(1)
   })
 
   it('call render', async () => {
