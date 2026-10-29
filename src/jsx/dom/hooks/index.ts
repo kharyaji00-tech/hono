@@ -31,7 +31,7 @@ export const FormContext: Context<FormStatus> = createContext<FormStatus>({
 const actions: Set<Promise<unknown>> = new Set()
 export const registerAction = (action: Promise<unknown>) => {
   actions.add(action)
-  action.finally(() => actions.delete(action))
+  action.finally(() => actions.delete(action)).catch(() => {})
 }
 
 /**
@@ -44,7 +44,7 @@ export const useFormStatus = (): FormStatus => {
 
 /**
  * This hook returns the current state and a function to update the state optimistically
- * The current state is updated optimistically and then reverted to the original state when all actions are resolved
+ * The current state is updated optimistically and then reverted to the original state when all actions are settled
  * @param state
  * @param updateState
  * @returns [T, (action: N) => void]
@@ -55,9 +55,11 @@ export const useOptimistic = <T, N>(
 ): [T, (action: N) => void] => {
   const [optimisticState, setOptimisticState] = useState(state)
   if (actions.size > 0) {
-    Promise.all(actions).finally(() => {
-      setOptimisticState(state)
-    })
+    Promise.allSettled(actions)
+      .finally(() => {
+        setOptimisticState(state)
+      })
+      .catch(() => {})
   } else {
     setOptimisticState(state)
   }
