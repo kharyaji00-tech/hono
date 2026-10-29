@@ -36,6 +36,70 @@ const queryRepresentationMetadataHeaders = [
   'content-location',
 ] as const
 
+// RFC 9110 §15.4.5 requires a 304 response to carry the headers that would
+// have been sent in an equivalent 200 response: Cache-Control, Content-Location,
+// Date, ETag, Expires, and Vary. `last-modified` is retained as a validator so
+// clients can revalidate again using `If-Modified-Since`.
+const notModifiedRetainedHeaders = new Set([
+  'cache-control',
+  'content-location',
+  'date',
+  'etag',
+  'expires',
+  'last-modified',
+  'vary',
+])
+
+const stripWeak = (tag: string) => tag.replace(/^W\//, '')
+
+const etagMatches = (etag: string, ifNoneMatch: string | null): boolean =>
+  ifNoneMatch != null &&
+  ifNoneMatch.split(',').some((tag) => stripWeak(tag.trim()) === stripWeak(etag))
+
+const isNotModifiedSince = (
+  lastModified: string | null,
+  ifModifiedSince: string | null
+): boolean => {
+  if (lastModified == null || ifModifiedSince == null) {
+    return false
+  }
+  const lastModifiedTime = Date.parse(lastModified)
+  const ifModifiedSinceTime = Date.parse(ifModifiedSince)
+  if (Number.isNaN(lastModifiedTime) || Number.isNaN(ifModifiedSinceTime)) {
+    return false
+  }
+  return lastModifiedTime <= ifModifiedSinceTime
+}
+
+// Evaluates the conditional request headers against the cached response's
+// validators per RFC 9110 §13.1. `If-None-Match` takes precedence over
+// `If-Modified-Since` (RFC 9110 §13.1.3): the latter MUST be ignored when the
+// former is present.
+const isConditionalNotModified = (request: Request, response: Response): boolean => {
+  const ifNoneMatch = request.headers.get('If-None-Match')
+  if (ifNoneMatch != null) {
+    if (ifNoneMatch === '*') {
+      return true
+    }
+    const etag = response.headers.get('ETag')
+    return etag != null && etagMatches(etag, ifNoneMatch)
+  }
+  return isNotModifiedSince(
+    response.headers.get('Last-Modified'),
+    request.headers.get('If-Modified-Since')
+  )
+}
+
+const buildNotModifiedResponse = (response: Response): Response => {
+  const headers = new Headers(response.headers)
+  for (const key of Array.from(headers.keys())) {
+    if (!notModifiedRetainedHeaders.has(key.toLowerCase())) {
+      headers.delete(key)
+    }
+  }
+  return new Response(null, { status: 304, statusText: 'Not Modified', headers })
+}
+
 const shouldSkipCacheControl = (cacheControl: string | null): boolean =>
   !!cacheControl && /(?:^|,\s*)(?:private|no-(?:store|cache))(?:\s*(?:=|,|$))/i.test(cacheControl)
 
@@ -300,6 +364,9 @@ export const cache = (options: {
     const cache = await caches.open(cacheName)
     const response = await cache.match(key)
     if (response) {
+      if (isConditionalNotModified(c.req.raw, response)) {
+        return buildNotModifiedResponse(response)
+      }
       return new Response(response.body, response)
     }
 
