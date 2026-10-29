@@ -13,7 +13,8 @@ let errorBoundaryCounter = 0
 
 export const childrenToString = async (children: Child[]): Promise<HtmlEscapedString[]> => {
   try {
-    return children.flat().map(resolveChildEarly) as HtmlEscapedString[]
+    const values = children.flat().map(resolveChildEarly)
+    return (await Promise.all(values)).flat() as HtmlEscapedString[]
   } catch (e) {
     if (e instanceof Promise) {
       // Capture before `await`: on the fallback path the render context is
