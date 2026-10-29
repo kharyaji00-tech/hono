@@ -157,6 +157,47 @@ describe('upgradeWebSocket()', () => {
   })
 })
 
+describe('websocket.error()', () => {
+  it('Should expose an error hook on the websocket handler', () => {
+    expect(typeof websocket.error).toBe('function')
+  })
+
+  it('Should call onError with a synthesized error event carrying the thrown error (Bun >= 1.4 order)', () => {
+    const onErrorSpy = vi.fn()
+    const ws = {
+      data: {
+        events: {
+          onError(evt, wsContext) {
+            onErrorSpy(evt, wsContext)
+          },
+        },
+      },
+      readyState: 1,
+    } as BunServerWebSocket<BunWebSocketData>
+
+    const error = new Error('boom')
+    websocket.error(error, ws)
+
+    expect(onErrorSpy).toHaveBeenCalledTimes(1)
+    const [evt, wsContext] = onErrorSpy.mock.calls[0]
+    expect(evt).toBeInstanceOf(Event)
+    expect(evt.type).toBe('error')
+    expect((evt as Event & { error: unknown }).error).toBe(error)
+    expect(wsContext.raw).toBe(ws)
+  })
+
+  it('Should not throw when onError is not provided', () => {
+    const ws = {
+      data: {
+        events: {},
+      },
+      readyState: 1,
+    } as BunServerWebSocket<BunWebSocketData>
+
+    expect(() => websocket.error(new Error('boom'), ws)).not.toThrow()
+  })
+})
+
 describe('createBunWebSocket()', () => {
   it('Should return upgradeWebSocket and websocket', () => {
     const result = createBunWebSocket()

@@ -16,6 +16,7 @@ export interface BunWebSocketHandler<T> {
   open(ws: BunServerWebSocket<T>): void
   close(ws: BunServerWebSocket<T>, code?: number, reason?: string): void
   message(ws: BunServerWebSocket<T>, message: string | { buffer: ArrayBufferLike }): void
+  error(error: Error, ws: BunServerWebSocket<T>): void
 }
 interface CreateWebSocket<T> {
   upgradeWebSocket: UpgradeWebSocket<T>
@@ -100,6 +101,37 @@ export const websocket: BunWebSocketHandler<BunWebSocketData> = {
 
       websocketListeners.onMessage(createWSMessageEvent(normalizedReceiveData), createWSContext(ws))
     }
+  },
+  error(error: unknown, ws: unknown) {
+    // Bun only catches socket-handler exceptions when an `error` member is
+    // present on the `websocket` object passed to `Bun.serve()`. Without it,
+    // any throw inside `open`/`message`/`close` becomes an uncaught exception
+    // that terminates the whole `Bun.serve` process. Defining this hook opts
+    // Bun into catching those errors so the server survives.
+    //
+    // Bun >= 1.4 invokes the hook as `error(error, ws)`; older Bun versions
+    // invoked it as `error(ws, error)`. The websocket argument carries
+    // `data`, so when the first argument is a plain object with `data` (and
+    // not an `Error` instance) treat it as the websocket and swap the order
+    // before forwarding to the user's `onError` callback (matching the deno
+    // and cloudflare adapters).
+    let webSocket: BunServerWebSocket<BunWebSocketData>
+    let thrownError: unknown
+    if (
+      error !== null &&
+      typeof error === 'object' &&
+      'data' in error &&
+      !(error instanceof Error)
+    ) {
+      webSocket = error as BunServerWebSocket<BunWebSocketData>
+      thrownError = ws
+    } else {
+      webSocket = ws as BunServerWebSocket<BunWebSocketData>
+      thrownError = error
+    }
+    const evt = new Event('error')
+    ;(evt as Event & { error: unknown }).error = thrownError
+    webSocket.data.events.onError?.(evt, createWSContext(webSocket))
   },
 }
 
