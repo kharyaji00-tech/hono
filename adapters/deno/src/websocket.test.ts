@@ -144,6 +144,37 @@ describe('WebSockets', () => {
     expect(passedOptions?.protocol).toBe('user-chosen')
   })
 
+  it('Should upgrade when the Upgrade header has mixed casing', async () => {
+    const messagePromise = new Promise((resolve) =>
+      app.get(
+        '/ws',
+        upgradeWebSocket(() => ({
+          onMessage: (evt) => resolve(evt.data),
+        }))
+      )
+    )
+    const socket = new EventTarget() as WebSocket
+    Deno.upgradeWebSocket = () => {
+      return {
+        response: new Response(),
+        socket,
+      }
+    }
+    await app.request('/ws', {
+      headers: {
+        upgrade: 'WebSocket',
+      },
+    })
+    const data = Math.random().toString()
+    socket.onmessage &&
+      socket.onmessage(
+        new MessageEvent('message', {
+          data,
+        })
+      )
+    expect(await messagePromise).toBe(data)
+  })
+
   it('Should call next() when header does not have upgrade', async () => {
     const next = vi.fn()
     await upgradeWebSocket(() => ({}))(

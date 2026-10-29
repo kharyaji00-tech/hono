@@ -3,7 +3,7 @@ import { WSContext, defineWebSocketHelper } from 'hono/ws'
 
 export const upgradeWebSocket: UpgradeWebSocket<WebSocket, Deno.UpgradeWebSocketOptions> =
   defineWebSocketHelper(async (c, events, options) => {
-    if (c.req.header('upgrade') !== 'websocket') {
+    if (c.req.header('upgrade')?.toLowerCase() !== 'websocket') {
       return
     }
 

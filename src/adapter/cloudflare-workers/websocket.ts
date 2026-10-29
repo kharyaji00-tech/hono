@@ -12,7 +12,7 @@ export const upgradeWebSocket: UpgradeWebSocket<
   Omit<WSEvents<WebSocket>, 'onOpen'>
 > = defineWebSocketHelper(async (c, events) => {
   const upgradeHeader = c.req.header('Upgrade')
-  if (upgradeHeader !== 'websocket') {
+  if (upgradeHeader?.toLowerCase() !== 'websocket') {
     return
   }
 
