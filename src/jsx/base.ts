@@ -274,6 +274,13 @@ export class JSXNode implements HtmlEscaped {
         // Do nothing
       } else if (typeof v === 'number' || (v as HtmlEscaped).isEscaped) {
         buffer[0] += ` ${key}="${v}"`
+        if (typeof v !== 'number') {
+          const callbacks = (v as HtmlEscapedString).callbacks
+          if (callbacks) {
+            buffer.callbacks ||= []
+            buffer.callbacks.push(...callbacks)
+          }
+        }
       } else if (typeof v === 'boolean' && booleanAttributes.includes(key)) {
         if (v) {
           buffer[0] += ` ${key}=""`

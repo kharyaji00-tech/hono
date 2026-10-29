@@ -6,7 +6,7 @@
 import { raw } from '../../helper/html'
 import { DOM_RENDERER } from '../../jsx/constants'
 import { createCssJsxDomObjects } from '../../jsx/dom/css'
-import { escapeToBuffer } from '../../utils/html'
+import { escapeToBuffer, HtmlEscapedCallbackPhase } from '../../utils/html'
 import type { HtmlEscapedCallback, HtmlEscapedString } from '../../utils/html'
 import type {
   ClassNameSlug,
@@ -121,7 +121,7 @@ export const createCssContext = ({
       return Promise.resolve(appendStyleScript)
     }
 
-    const addClassNameToContext: HtmlEscapedCallback = ({ context }) => {
+    const addClassNameToContext: HtmlEscapedCallback = ({ buffer, context, phase }) => {
       if (!contextMap.has(context)) {
         contextMap.set(context, [{}, {}])
       }
@@ -141,6 +141,10 @@ export const createCssContext = ({
       )
       if (allAdded) {
         return
+      }
+
+      if (buffer && phase === HtmlEscapedCallbackPhase.Stringify) {
+        return appendStyle({ buffer, context, phase })
       }
 
       return Promise.resolve(raw('', [appendStyle]))
