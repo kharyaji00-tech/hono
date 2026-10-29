@@ -6,6 +6,7 @@
 import type { Context, ExecutionContext } from '../../context'
 import { routePath } from '../../helper/route'
 import type { MiddlewareHandler } from '../../types'
+import { getPattern, splitRoutingPath } from '../../utils/url'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ApplicationHandler = (request: Request, ...args: any) => Response | Promise<Response>
@@ -18,11 +19,41 @@ type MountOptions =
       replaceRequest?: MountReplaceRequest | false
     }
 
+/**
+ * Compute the length of the concrete request-path prefix that a mount route
+ * pattern matched, resolving parameter (`:version`), regex (`:id{[0-9]+}`),
+ * and wildcard (`*`) segments against the incoming request path. Using the
+ * pattern's own string length instead breaks parameterized mounts, since a
+ * pattern like `/api/:version` is not what was actually matched.
+ */
+const getPathPrefixLength = (c: Context, routingPath: string): number => {
+  if (!/[:*]/.test(routingPath)) {
+    return routingPath.length
+  }
+  const paths = splitRoutingPath(routingPath)
+  const reqPath = c.req.path
+  let pathPrefixLength = 0
+  for (let i = 0, len = paths.length; i < len; i++) {
+    const pattern = getPattern(paths[i], paths[i + 1])
+    if (pattern) {
+      const re = pattern[2] === true || pattern === '*' ? /[^\/]+/ : pattern[2]
+      const restPath = reqPath.substring(pathPrefixLength + 1)
+      // like the router, fall back to matching only the current segment
+      const segment = restPath.split('/', 1)[0]
+      pathPrefixLength += (restPath.match(re)?.[0] ?? (re.test(segment) ? segment : '')).length
+    } else {
+      pathPrefixLength += paths[i].length
+    }
+    pathPrefixLength += 1 // for '/'
+  }
+  return pathPrefixLength
+}
+
 const defaultReplaceRequest = (c: Context): Request => {
   // e.g. `/another-app/*` (basePath is already merged) -> `/another-app`
   const pathPrefix = routePath(c).replace(/\/\*$/, '')
   const url = new URL(c.req.raw.url)
-  url.pathname = c.req.path.slice(pathPrefix.length) || '/'
+  url.pathname = c.req.path.slice(getPathPrefixLength(c, pathPrefix)) || '/'
   return new Request(url, c.req.raw)
 }
 
