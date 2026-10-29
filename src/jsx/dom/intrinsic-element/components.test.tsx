@@ -1163,6 +1163,36 @@ describe('intrinsic element', () => {
       await Promise.resolve()
       expect(root.innerHTML).toBe('<div><button>Toggle</button></div>')
     })
+
+    it('should use the latest action after the action prop changes between renders', async () => {
+      const actionA = vi.fn()
+      const actionB = vi.fn()
+      const App = () => {
+        const [i, setI] = useState(0)
+        return (
+          <>
+            <form action={[actionA, actionB][i]} method='post'>
+              <input type='text' name='name' value='Hello' />
+              <button type='submit'>Submit</button>
+            </form>
+            <button id='swap' onClick={() => setI(1)}>
+              swap
+            </button>
+          </>
+        )
+      }
+      render(<App />, root)
+      root.querySelector<HTMLButtonElement>('button[type="submit"]')?.click()
+      expect(actionA).toBeCalledTimes(1)
+      expect(actionB).toBeCalledTimes(0)
+      root.querySelector<HTMLButtonElement>('#swap')?.click()
+      await Promise.resolve()
+      root.querySelector<HTMLButtonElement>('button[type="submit"]')?.click()
+      expect(actionA).toBeCalledTimes(1)
+      expect(actionB).toBeCalledTimes(1)
+      const formDataB = actionB.mock.calls[0][0]
+      expect(formDataB.get('name')).toBe('Hello')
+    })
   })
 
   describe('input element', () => {
@@ -1222,6 +1252,34 @@ describe('intrinsic element', () => {
       await Promise.resolve()
       await Promise.resolve()
       expect(root.innerHTML).toBe('<div><button>Toggle</button></div>')
+    })
+
+    it('should use the latest formAction after the formAction prop changes between renders', async () => {
+      const actionA = vi.fn()
+      const actionB = vi.fn()
+      const App = () => {
+        const [i, setI] = useState(0)
+        return (
+          <form>
+            <input type='text' name='name' value='Hello' />
+            <input type='submit' value='Submit' formAction={[actionA, actionB][i]} />
+            <button type='button' id='swap' onClick={() => setI(1)}>
+              swap
+            </button>
+          </form>
+        )
+      }
+      render(<App />, root)
+      root.querySelector<HTMLInputElement>('input[type="submit"]')?.click()
+      expect(actionA).toBeCalledTimes(1)
+      expect(actionB).toBeCalledTimes(0)
+      root.querySelector<HTMLButtonElement>('#swap')?.click()
+      await Promise.resolve()
+      root.querySelector<HTMLInputElement>('input[type="submit"]')?.click()
+      expect(actionA).toBeCalledTimes(1)
+      expect(actionB).toBeCalledTimes(1)
+      const formDataB = actionB.mock.calls[0][0]
+      expect(formDataB.get('name')).toBe('Hello')
     })
   })
 
@@ -1290,6 +1348,36 @@ describe('intrinsic element', () => {
       await Promise.resolve()
       await Promise.resolve()
       expect(root.innerHTML).toBe('<div><button id="toggle">Toggle</button></div>')
+    })
+
+    it('should use the latest formAction after the formAction prop changes between renders', async () => {
+      const actionA = vi.fn()
+      const actionB = vi.fn()
+      const App = () => {
+        const [i, setI] = useState(0)
+        return (
+          <form>
+            <input type='text' name='name' value='Hello' />
+            <button type='submit' formAction={[actionA, actionB][i]}>
+              Submit
+            </button>
+            <button type='button' id='swap' onClick={() => setI(1)}>
+              swap
+            </button>
+          </form>
+        )
+      }
+      render(<App />, root)
+      root.querySelector<HTMLButtonElement>('button[type="submit"]')?.click()
+      expect(actionA).toBeCalledTimes(1)
+      expect(actionB).toBeCalledTimes(0)
+      root.querySelector<HTMLButtonElement>('#swap')?.click()
+      await Promise.resolve()
+      root.querySelector<HTMLButtonElement>('button[type="submit"]')?.click()
+      expect(actionA).toBeCalledTimes(1)
+      expect(actionB).toBeCalledTimes(1)
+      const formDataB = actionB.mock.calls[0][0]
+      expect(formDataB.get('name')).toBe('Hello')
     })
   })
 })
