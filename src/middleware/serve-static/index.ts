@@ -117,6 +117,9 @@ export const serveStatic = <E extends Env = Env>(
           const compressedContent = (await getContent(path + ENCODINGS[encoding], c)) as Data | null
 
           if (compressedContent) {
+            if (content instanceof ReadableStream) {
+              await content.cancel()
+            }
             content = compressedContent
             c.header('Content-Encoding', encoding)
             c.header('Vary', 'Accept-Encoding', { append: true })

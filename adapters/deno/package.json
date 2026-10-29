@@ -16,7 +16,7 @@
   "scripts": {
     "build": "rm -rf dist && vp pack && publint",
     "test": "tsc -p tsconfig.json && vp test --run",
-    "test:deno": "deno test --allow-read --allow-env --allow-write --allow-net -c test/deno.json test"
+    "test:deno": "deno test --allow-all -c test/deno.json test"
   },
   "license": "MIT",
   "repository": {
