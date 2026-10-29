@@ -122,6 +122,38 @@ describe('Method Override Middleware', () => {
         })
         expect(res.status).toBe(404)
       })
+
+      it('Should not forward the original Content-Length after rewriting the urlencoded body', async () => {
+        const app = new Hono()
+        app.use('/posts/*', methodOverride({ app }))
+        app.on(['post', 'delete'], '/posts', async (c) => {
+          const form = await c.req.formData()
+          return c.json({
+            method: c.req.method,
+            message: form.get('message'),
+            contentType: c.req.header('content-type') ?? '',
+            contentLength: c.req.header('content-length') ?? null,
+          })
+        })
+        const params = new URLSearchParams()
+        params.append('message', 'Hello')
+        params.append('_method', 'DELETE')
+        const res = await app.request('/posts', {
+          body: params,
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': '28',
+          },
+          method: 'POST',
+        })
+        expect(res.status).toBe(200)
+        const data = await res.json()
+        expect(data.method).toBe('DELETE')
+        expect(data.message).toBe('Hello')
+        expect(data.contentType).toBe('application/x-www-form-urlencoded')
+        expect(data.contentLength).not.toBe('28')
+        expect(data.contentLength).toBeNull()
+      })
     })
   })
 
