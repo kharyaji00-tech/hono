@@ -703,7 +703,6 @@ export const build = (context: Context, node: NodeObject, children?: Child[]): v
           ) {
             // render error boundary immediately
             apply(errorHandlerNode, errorHandlerNode.c as Container, false)
-            return
           }
         }
         throw cancelBuild
