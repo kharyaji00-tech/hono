@@ -1084,6 +1084,78 @@ describe('Bearer Auth realm', () => {
   })
 })
 
+describe('Bearer Auth object-form wwwAuthenticateHeader escaping', () => {
+  const paramsWithSpecialChars = {
+    realm: 'my "api"\\',
+    error: 'invalid_token',
+    error_description: 'see "docs"\\here',
+  }
+  const expectedHeader =
+    'Bearer realm="my \\"api\\"\\\\",error="invalid_token",error_description="see \\"docs\\"\\\\here"'
+
+  it('Should escape quotes and backslashes when wwwAuthenticateHeader is an object on noAuthenticationHeader', async () => {
+    const app = new Hono()
+    app.use(
+      '/auth/*',
+      bearerAuth({
+        token: 'secret',
+        noAuthenticationHeader: { wwwAuthenticateHeader: paramsWithSpecialChars },
+      })
+    )
+    app.get('/auth/*', (c) => c.text('ok'))
+
+    const res = await app.request('http://localhost/auth/page')
+
+    expect(res.status).toBe(401)
+    expect(res.headers.get('WWW-Authenticate')).toBe(expectedHeader)
+  })
+
+  it('Should escape quotes and backslashes when a message function returns an object wwwAuthenticateHeader', async () => {
+    const app = new Hono()
+    app.use(
+      '/auth/*',
+      bearerAuth({
+        token: 'secret',
+        invalidToken: {
+          wwwAuthenticateHeader: () => ({
+            realm: 'a"b\\c',
+            error: 'invalid_token',
+          }),
+        },
+      })
+    )
+    app.get('/auth/*', (c) => c.text('ok'))
+
+    const req = new Request('http://localhost/auth/page')
+    req.headers.set('Authorization', 'Bearer invalid-token')
+    const res = await app.request(req)
+
+    expect(res.status).toBe(401)
+    expect(res.headers.get('WWW-Authenticate')).toBe(
+      'Bearer realm="a\\"b\\\\c",error="invalid_token"'
+    )
+  })
+
+  it('Should serialize non-string object values via String()', async () => {
+    const app = new Hono()
+    app.use(
+      '/auth/*',
+      bearerAuth({
+        token: 'secret',
+        invalidToken: { wwwAuthenticateHeader: { error: 'invalid_token', retry: 3 } },
+      })
+    )
+    app.get('/auth/*', (c) => c.text('ok'))
+
+    const req = new Request('http://localhost/auth/page')
+    req.headers.set('Authorization', 'Bearer invalid-token')
+    const res = await app.request(req)
+
+    expect(res.status).toBe(401)
+    expect(res.headers.get('WWW-Authenticate')).toBe('Bearer error="invalid_token",retry="3"')
+  })
+})
+
 describe('Bearer Auth options validation', () => {
   it('Should throw an error mentioning both "token" and "verifyToken" when neither is provided', () => {
     expect(() => {

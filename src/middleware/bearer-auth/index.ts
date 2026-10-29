@@ -136,7 +136,10 @@ export const bearerAuth = <E extends Env = Env>(
         typeof wwwAuthenticateHeaderValue === 'string'
           ? wwwAuthenticateHeaderValue
           : `${wwwAuthenticatePrefix}${Object.entries(wwwAuthenticateHeaderValue)
-              .map(([key, value]) => `${key}="${value}"`)
+              .map(
+                ([key, value]) =>
+                  `${key.replace(/[\\"]/g, '\\$&')}="${String(value).replace(/[\\"]/g, '\\$&')}"`
+              )
               .join(',')}`,
     }
     const responseMessage =
