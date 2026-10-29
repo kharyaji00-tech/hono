@@ -89,6 +89,9 @@ export class Node {
             // a single-char pattern like :x{.} is ambiguous with a literal character
             throw PATH_ERROR
           }
+          if (new RegExp(`^(?:${regexpStr})$`).test('')) {
+            throw PATH_ERROR
+          }
         }
 
         nextNode = node.#children[regexpStr]

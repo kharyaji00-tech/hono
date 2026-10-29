@@ -262,4 +262,24 @@ describe('RegExpRouter', () => {
       }
     })
   })
+
+  describe('Empty-matchable param regexp', () => {
+    it.each([['[0-9]?'], ['a*'], ['a{0,3}'], ['(?:a|)']])(
+      'Should throw UnsupportedPathError for `%s` at registration',
+      (re) => {
+        const router = new RegExpRouter<string>()
+        expect(() => router.add('GET', `/static/:v{${re}}/end`, 'ok')).toThrowError(
+          UnsupportedPathError
+        )
+      }
+    )
+
+    it.each([['[0-9]+'], ['[^/]+'], ['(?:foo|bar)'], ['[0-9]{4}']])(
+      'Should still accept the non-empty-matchable regexp `%s`',
+      (re) => {
+        const router = new RegExpRouter<string>()
+        expect(() => router.add('GET', `/static/:v{${re}}`, 'ok')).not.toThrow()
+      }
+    )
+  })
 })
