@@ -345,7 +345,11 @@ export const form: FC<
       const actionRes = currentAction(formData)
       if (actionRes instanceof Promise) {
         registerAction(actionRes)
-        await actionRes
+        try {
+          await actionRes
+        } catch (e) {
+          console.error(e)
+        }
       }
       setState([null, true])
     },
