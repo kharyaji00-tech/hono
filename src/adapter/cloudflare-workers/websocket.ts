@@ -16,6 +16,12 @@ export const upgradeWebSocket: UpgradeWebSocket<
     return
   }
 
+  // Echo the negotiated subprotocol back to the client. The Cloudflare Workers
+  // runtime does not auto-negotiate `Sec-WebSocket-Protocol` for `WebSocketPair`,
+  // so strict clients (e.g. the `ws` npm client, Chrome) reject the handshake
+  // unless the selected protocol is echoed on the 101 response.
+  const subprotocol = c.req.header('sec-websocket-protocol')?.split(',')[0]?.trim()
+
   // @ts-expect-error WebSocketPair is not typed
   const webSocketPair = new WebSocketPair()
   const client: WebSocket = webSocketPair[0]
@@ -24,7 +30,9 @@ export const upgradeWebSocket: UpgradeWebSocket<
   const wsContext = new WSContext<WebSocket>({
     close: (code, reason) => server.close(code, reason),
     get protocol() {
-      return server.protocol
+      // workerd always reports an empty string for the server socket's
+      // `protocol`, so surface the negotiated subprotocol from the request.
+      return subprotocol ?? ''
     },
     raw: server,
     get readyState() {
@@ -48,8 +56,11 @@ export const upgradeWebSocket: UpgradeWebSocket<
 
   // @ts-expect-error - server.accept is not typed
   server.accept?.()
+
+  const headers = subprotocol ? { 'Sec-WebSocket-Protocol': subprotocol } : undefined
   return new Response(null, {
     status: 101,
+    headers,
     // @ts-expect-error - webSocket is not typed
     webSocket: client,
   })
