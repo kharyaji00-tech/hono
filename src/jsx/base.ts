@@ -123,6 +123,12 @@ const resolveFunctionComponentResult = (
       !Array.isArray(resolved) &&
       !(resolved instanceof JSXNode)
     ) {
+      if (resolved == null || typeof resolved === 'boolean') {
+        return ''
+      }
+      if (typeof resolved === 'number') {
+        return String(resolved)
+      }
       return resolved
     }
     const children = Array.isArray(resolved) ? resolved : [resolved as Child]
@@ -155,7 +161,16 @@ const childrenToStringToBuffer = (children: Child[], buffer: StringBufferWithCal
         buffer.callbacks.push(...callbacks)
       }
     } else if (child instanceof Promise) {
-      buffer.unshift('', child)
+      buffer.unshift(
+        '',
+        (child as Promise<unknown>).then((resolved) =>
+          resolved == null || typeof resolved === 'boolean'
+            ? ''
+            : typeof resolved === 'number'
+              ? String(resolved)
+              : (resolved as string)
+        )
+      )
     } else {
       // `child` type is `Child[]`, so stringify recursively
       childrenToStringToBuffer(child, buffer)
