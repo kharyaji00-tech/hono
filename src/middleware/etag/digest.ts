@@ -33,11 +33,12 @@ export const generateDigest = async (
 
   const reader = stream.getReader()
   for (;;) {
-    const { value, done } = await reader.read()
+    const { value: read, done } = await reader.read()
     if (done) {
       break
     }
 
+    const value = read.slice()
     let offset = 0
     while (offset < value.byteLength) {
       const remaining = value.byteLength - offset
