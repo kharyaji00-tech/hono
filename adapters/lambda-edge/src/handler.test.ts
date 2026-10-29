@@ -377,6 +377,65 @@ describe('handle', () => {
     expect(res).toMatchObject({ body: 'plain' })
     expect(res).not.toHaveProperty('bodyEncoding')
   })
+
+  it('Should omit body and bodyEncoding for a 204 No Content response', async () => {
+    const app = new Hono()
+    app.delete('/test-path', (c) => c.body(null, 204))
+    const handler = handle(app)
+
+    const res = await handler({
+      ...cloudFrontEdgeEvent,
+      Records: [
+        {
+          cf: {
+            ...cloudFrontEdgeEvent.Records[0].cf,
+            request: {
+              ...cloudFrontEdgeEvent.Records[0].cf.request,
+              method: 'DELETE',
+            },
+          },
+        },
+      ],
+    })
+
+    expect(res).toMatchObject({ status: '204' })
+    expect(res).not.toHaveProperty('body')
+    expect(res).not.toHaveProperty('bodyEncoding')
+  })
+
+  it('Should omit body and bodyEncoding for a 304 Not Modified response', async () => {
+    const app = new Hono()
+    app.get(
+      '/test-path',
+      () =>
+        new Response(null, {
+          status: 304,
+          headers: { etag: '"abc"' },
+        })
+    )
+    const handler = handle(app)
+
+    const res = await handler(cloudFrontEdgeEvent)
+
+    expect(res).toMatchObject({ status: '304' })
+    expect(res.headers).toEqual({
+      etag: [{ key: 'etag', value: '"abc"' }],
+    })
+    expect(res).not.toHaveProperty('body')
+    expect(res).not.toHaveProperty('bodyEncoding')
+  })
+
+  it('Should still include an empty body when the response body is non-null (c.text(""))', async () => {
+    const app = new Hono()
+    app.get('/test-path', (c) => c.text(''))
+    const handler = handle(app)
+
+    const res = await handler(cloudFrontEdgeEvent)
+
+    expect(res).toMatchObject({ status: '200' })
+    expect(res.body).toBe('')
+    expect(res).not.toHaveProperty('bodyEncoding')
+  })
 })
 
 describe('handle with a malformed event', () => {

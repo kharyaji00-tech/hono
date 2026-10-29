@@ -57,6 +57,15 @@ describe('Lambda@Edge Adapter for Hono', () => {
     return c.text(`${body.size} bytes`)
   })
 
+  app.delete('/no-content', (c) => c.body(null, 204))
+
+  app.get('/not-modified', (c) => {
+    return c.body(null, 304, {
+      'Cache-Control': 'no-cache',
+      ETag: '"abc"',
+    })
+  })
+
   const username = 'hono-user-a'
   const password = 'hono-password-a'
   app.use('/auth/*', basicAuth({ username, password }))
@@ -1130,5 +1139,84 @@ describe('Lambda@Edge Adapter for Hono', () => {
 
     expect(response.body).toBe('RmFrZSBJbWFnZQ==') // base64 encoded "Fake Image"
     expect(response).toMatchObject({ bodyEncoding: 'base64' })
+  })
+
+  it('Should omit the body for a 204 No Content response (viewer-request)', async () => {
+    const event = {
+      Records: [
+        {
+          cf: {
+            config: {
+              distributionDomainName: 'example.com',
+              distributionId: 'EXAMPLE123',
+              eventType: 'viewer-request',
+              requestId: 'exampleRequestId',
+            },
+            request: {
+              clientIp: '123.123.123.123',
+              headers: {
+                host: [
+                  {
+                    key: 'Host',
+                    value: 'example.com',
+                  },
+                ],
+              },
+              method: 'DELETE',
+              querystring: '',
+              uri: '/no-content',
+            },
+          },
+        },
+      ],
+    }
+
+    const response = await handler(event)
+
+    expect(response).toMatchObject({ status: '204' })
+    expect(response).not.toHaveProperty('body')
+    expect(response).not.toHaveProperty('bodyEncoding')
+  })
+
+  it('Should omit the body for a 304 Not Modified response (viewer-request)', async () => {
+    const event = {
+      Records: [
+        {
+          cf: {
+            config: {
+              distributionDomainName: 'example.com',
+              distributionId: 'EXAMPLE123',
+              eventType: 'viewer-request',
+              requestId: 'exampleRequestId',
+            },
+            request: {
+              clientIp: '123.123.123.123',
+              headers: {
+                host: [
+                  {
+                    key: 'Host',
+                    value: 'example.com',
+                  },
+                ],
+              },
+              method: 'GET',
+              querystring: '',
+              uri: '/not-modified',
+            },
+          },
+        },
+      ],
+    }
+
+    const response = await handler(event)
+
+    expect(response).toMatchObject({ status: '304' })
+    expect(response).not.toHaveProperty('body')
+    expect(response).not.toHaveProperty('bodyEncoding')
+    if (response.headers && response.headers['etag']) {
+      expect(response.headers['etag'][0].value).toBe('"abc"')
+    } else {
+      throw new Error("'etag' header is missing in the response")
+    }
   })
 })

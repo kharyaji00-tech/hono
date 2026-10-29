@@ -147,18 +147,26 @@ export const handle = (
 }
 
 const createResult = async (res: Response): Promise<CloudFrontResult> => {
+  const contentType = res.headers.get('content-type')
   const contentEncoding = res.headers.get('content-encoding')
   const isBase64Encoded =
-    isContentTypeBinary(res.headers.get('content-type') || '') ||
+    (!!contentType && isContentTypeBinary(contentType)) ||
     (!!contentEncoding && !/^identity$/i.test(contentEncoding))
-  const body = isBase64Encoded ? encodeBase64(await res.arrayBuffer()) : await res.text()
 
-  return {
+  const result: CloudFrontResult = {
     status: res.status.toString(),
     headers: convertHeaders(res.headers),
-    body,
-    ...(isBase64Encoded && { bodyEncoding: 'base64' }),
   }
+
+  if (res.body !== null) {
+    const body = isBase64Encoded ? encodeBase64(await res.arrayBuffer()) : await res.text()
+    result.body = body
+    if (isBase64Encoded) {
+      result.bodyEncoding = 'base64'
+    }
+  }
+
+  return result
 }
 
 /**
