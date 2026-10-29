@@ -404,7 +404,7 @@ export const useSyncExternalStore = <T>(
   getServerSnapshot?: () => T
 ): T => {
   const buildData = buildDataStack.at(-1) as [Context, unknown]
-  if (!buildData) {
+  if (!buildData || (buildData[0] as unknown as unknown[]).length === 0) {
     // now a stringify process, maybe in server side
     if (!getServerSnapshot) {
       throw new Error('getServerSnapshot is required for server side rendering')

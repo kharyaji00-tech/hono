@@ -6,7 +6,7 @@ import { HtmlEscapedCallbackPhase, resolveCallback } from '../utils/html'
 import type { HtmlEscapedString } from '../utils/html'
 import { createContext, useContext } from './context'
 import { buildDataStack } from './dom/render'
-import { use } from './hooks'
+import { use, useSyncExternalStore } from './hooks'
 import { Suspense, renderToReadableStream, StreamingContext } from './streaming'
 
 const unsafeHtml = '<img src=x onerror=alert(1)>'
@@ -987,6 +987,114 @@ d.replaceWith(c.content)
       expect(replacementResult(`<html><body>${chunks.join('')}</body></html>`)).toEqual(
         '<h1>Hello from use()</h1>'
       )
+    })
+  })
+
+  describe('useSyncExternalStore', async () => {
+    it('renders the server snapshot inside Suspense (stringify)', async () => {
+      const unsubscribe = vi.fn()
+      const subscribe = vi.fn(() => unsubscribe)
+      const getSnapshot = vi.fn(() => {
+        throw new Error('client only')
+      })
+      const getServerSnapshot = vi.fn(() => 100)
+      const App = () => {
+        const count = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+        return <div>{count}</div>
+      }
+      const html = await stringify(
+        <Suspense fallback={<p>Loading...</p>}>
+          <App />
+        </Suspense>
+      )
+      expect(html).toBe('<div>100</div>')
+      expect(unsubscribe).not.toBeCalled()
+      expect(subscribe).not.toBeCalled()
+      expect(getSnapshot).not.toBeCalled()
+      expect(getServerSnapshot).toBeCalledTimes(1)
+      suspenseCounter -= 1 // fallback is not rendered
+    })
+
+    it('renders the server snapshot inside Suspense (streamed)', async () => {
+      const unsubscribe = vi.fn()
+      const subscribe = vi.fn(() => unsubscribe)
+      const getSnapshot = vi.fn(() => {
+        throw new Error('client only')
+      })
+      const getServerSnapshot = vi.fn(() => 100)
+      const App = () => {
+        const count = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+        return <div>{count}</div>
+      }
+      const html = await drainStream(
+        renderToReadableStream(
+          <Suspense fallback={<p>Loading...</p>}>
+            <App />
+          </Suspense>
+        )
+      )
+      expect(html).toBe('<div>100</div>')
+      expect(unsubscribe).not.toBeCalled()
+      expect(subscribe).not.toBeCalled()
+      expect(getSnapshot).not.toBeCalled()
+      expect(getServerSnapshot).toBeCalledTimes(1)
+      suspenseCounter -= 1 // fallback is not rendered
+    })
+
+    it('uses the server snapshot when content suspends and then resolves', async () => {
+      let resolved = false
+      const subscribe = vi.fn(() => vi.fn())
+      const getSnapshot = vi.fn(() => 0)
+      const getServerSnapshot = vi.fn(() => 100)
+      const Content = () => {
+        if (!resolved) {
+          resolved = true
+          throw new Promise<void>((r) =>
+            setTimeout(() => {
+              resolved = true
+              r()
+            }, 10)
+          )
+        }
+        const count = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+        return <div>{count}</div>
+      }
+      const html = await drainStream(
+        renderToReadableStream(
+          <Suspense fallback={<p>Loading...</p>}>
+            <Content />
+          </Suspense>
+        )
+      )
+      expect(replacementResult(`<html><body>${html}</body></html>`)).toBe('<div>100</div>')
+      expect(getSnapshot).not.toBeCalled()
+      expect(getServerSnapshot).toBeCalledTimes(1)
+    })
+
+    it('surfaces the missing getServerSnapshot error via onError inside Suspense', async () => {
+      const getSnapshot = vi.fn(() => 'CLIENT')
+      const App = () => {
+        const count = useSyncExternalStore(vi.fn(), getSnapshot)
+        return <div>{count}</div>
+      }
+      const onError = vi.fn((_e: unknown) => '')
+      const html = await drainStream(
+        renderToReadableStream(
+          <Suspense fallback={<p>Loading...</p>}>
+            <App />
+          </Suspense>,
+          onError
+        )
+      )
+      expect(onError).toBeCalledTimes(1)
+      expect(onError.mock.calls[0][0]).toBeInstanceOf(Error)
+      expect((onError.mock.calls[0][0] as Error).message).toBe(
+        'getServerSnapshot is required for server side rendering'
+      )
+      expect(getSnapshot).not.toBeCalled()
+      // The throwing render produces no content.
+      expect(html).toBe('')
+      suspenseCounter -= 1 // the boundary never suspends, no index consumed
     })
   })
 
