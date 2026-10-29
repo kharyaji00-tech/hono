@@ -1,7 +1,7 @@
 /** @jsxImportSource ./ */
 
 import type { HtmlEscapedString } from '../utils/html'
-import type { Child, JSXNode } from './base'
+import type { Child, FC, JSXNode } from './base'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { cloneElement, jsx, Fragment } from './base'
 
@@ -88,6 +88,53 @@ describe('createElement', () => {
       )
     ).toBe('<div>&lt;img src=x onerror=alert(1)&gt;</div>')
   })
+
+  it.each([null, undefined, true, false])(
+    'should render nothing for an asynchronous component returning %s',
+    async (item) => {
+      const Async = (async () => item) as unknown as FC
+      const template = (
+        <div>
+          <Async />
+        </div>
+      )
+      expect(String(await template.toString())).toBe('<div></div>')
+    }
+  )
+
+  it.each([0, 5])(
+    'should stringify a number returned by an asynchronous component (%s)',
+    async (item) => {
+      const Async = (async () => item) as unknown as FC
+      const template = (
+        <div>
+          <Async />
+        </div>
+      )
+      expect(String(await template.toString())).toBe(`<div>${item}</div>`)
+    }
+  )
+
+  it('should render nothing for a top-level asynchronous component returning null', async () => {
+    const Async = (async () => null) as unknown as FC
+    expect(String(await (<Async />).toString())).toBe('')
+  })
+
+  it.each([null, undefined, true, false])(
+    'should render nothing for a direct Promise child resolving to %s',
+    async (item) => {
+      const template = <div>{Promise.resolve(item) as never}</div>
+      expect(String(await template.toString())).toBe('<div></div>')
+    }
+  )
+
+  it.each([0, 5])(
+    'should stringify a direct Promise child resolving to a number (%s)',
+    async (item) => {
+      const template = <div>{Promise.resolve(item) as never}</div>
+      expect(String(await template.toString())).toBe(`<div>${item}</div>`)
+    }
+  )
 
   it('should omit an unsupported object child', () => {
     const object = { toString: () => 'plain-text' }

@@ -4,6 +4,7 @@ import { JSDOM } from 'jsdom'
 import { raw } from '../helper/html'
 import { HtmlEscapedCallbackPhase, resolveCallback } from '../utils/html'
 import type { HtmlEscapedString } from '../utils/html'
+import type { FC } from './base'
 import { createContext, useContext } from './context'
 import { buildDataStack } from './dom/render'
 import { use } from './hooks'
@@ -543,6 +544,32 @@ d.replaceWith(c.content)
 
     expect(replacementResult(`<html><body>${chunks.join('')}</body></html>`)).toEqual('<p></p>')
   })
+
+  it.each([
+    ['null', null, ''],
+    ['undefined', undefined, ''],
+    ['true', true, ''],
+    ['false', false, ''],
+    ['0', 0, '0'],
+    ['5', 5, '5'],
+  ])(
+    'async Suspense component resolving to %s renders without crashing',
+    async (_name, value, expected) => {
+      const Content = (async () => {
+        await Promise.resolve()
+        return value
+      }) as unknown as FC
+
+      const stream = renderToReadableStream(
+        <Suspense fallback={<p>Loading...</p>}>
+          <Content />
+        </Suspense>
+      )
+
+      const html = await drainStream(stream)
+      expect(replacementResult(`<html><body>${html}</body></html>`)).toEqual(expected)
+    }
+  )
 
   it('reject()', async () => {
     const Content = async () => {

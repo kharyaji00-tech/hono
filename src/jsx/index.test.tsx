@@ -108,6 +108,29 @@ describe('JSX middleware', () => {
     )
   })
 
+  it('Should not 500 when an async component returns null/undefined/boolean/number', async () => {
+    const Nullish = (async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      return null
+    }) as unknown as FC
+    const Numbered = (async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      return 0
+    }) as unknown as FC
+
+    app.get('/', (c) => {
+      return c.html(
+        <div>
+          <Nullish />
+          <Numbered />
+        </div>
+      )
+    })
+    const res = await app.request('http://localhost/')
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('<div>0</div>')
+  })
+
   it('Should render async component with "html" tagged template strings', async () => {
     const AsyncComponent = async () => {
       await new Promise((resolve) => setTimeout(resolve, 10))
@@ -555,6 +578,22 @@ describe('render to string', () => {
         }) as unknown as FC
         const template = <Component />
         expect(template.toString()).toBe('0')
+      })
+
+      it.each([true, false, undefined, null])('async %s', async (item) => {
+        const Component: FC = (async () => {
+          return item
+        }) as unknown as FC
+        const template = <Component />
+        expect((await template.toString()).toString()).toBe('')
+      })
+
+      it('async falsy value', async () => {
+        const Component: FC = (async () => {
+          return 0
+        }) as unknown as FC
+        const template = <Component />
+        expect((await template.toString()).toString()).toBe('0')
       })
     })
   })
