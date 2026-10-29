@@ -56,6 +56,33 @@ describe('upgradeWebSocket middleware', () => {
     expect(next).toHaveBeenCalled()
   })
 
+  const mixedCasePromise = new Promise((resolve) =>
+    app.get(
+      '/ws-mixed',
+      upgradeWebSocket(() => ({
+        onMessage(evt, ws) {
+          resolve([evt.data, ws.readyState || 1])
+        },
+      }))
+    )
+  )
+
+  it('Should upgrade when the Upgrade header has mixed casing', async () => {
+    const sendingData = Math.random().toString()
+    await app.request('/ws-mixed', {
+      headers: {
+        Upgrade: 'WebSocket',
+      },
+    })
+    server.dispatchEvent(
+      new MessageEvent('message', {
+        data: sendingData,
+      })
+    )
+
+    expect([sendingData, 1]).toStrictEqual(await mixedCasePromise)
+  })
+
   const closePromise = new Promise((resolve) =>
     app.get(
       '/ws-close',
