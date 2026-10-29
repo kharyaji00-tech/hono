@@ -177,6 +177,38 @@ Deno.test('JSX: boolean attributes', async () => {
   assertEquals(falseHtml.toString(), '<div></div>')
 })
 
+Deno.test('JSX: boolean attributes handled at runtime (hidden/download)', async () => {
+  // `hidden` and `download` are listed in Hono's `booleanAttributes` but are NOT
+  // in Deno's compile-time `is_boolean_attr` list, so boolean values for them
+  // reach `jsxAttr` at runtime under precompile. Both render modes must agree:
+  // `true` renders the attribute, `false` omits it entirely (instead of
+  // rendering the literal string "false", which would invert the semantics —
+  // `hidden="false"` still hides the element, and `download="false"` still
+  // triggers a download).
+  const hiddenTrue = <div hidden={true}></div>
+  const downloadTrue = <a download={true}></a>
+  const hiddenFalse = <div hidden={false}></div>
+  const downloadFalse = <a download={false}></a>
+
+  assertEquals(hiddenTrue.toString(), '<div hidden=""></div>')
+  assertEquals(downloadTrue.toString(), '<a download=""></a>')
+  // precompile leaves a trailing space before `>` when the attribute is omitted
+  // at runtime; normalize whitespace so both modes share one assertion.
+  assertEquals(hiddenFalse.toString().replace(/\s+/g, ''), '<div></div>')
+  assertEquals(downloadFalse.toString().replace(/\s+/g, ''), '<a></a>')
+})
+
+Deno.test('JSX: dynamic boolean attributes handled at runtime', async () => {
+  // Dynamic boolean values (not literals) must take the same runtime path.
+  const h = false
+  const d = true
+  const hidden = <div hidden={h}></div>
+  const download = <a download={d}></a>
+
+  assertEquals(hidden.toString().replace(/\s+/g, ''), '<div></div>')
+  assertEquals(download.toString(), '<a download=""></a>')
+})
+
 Deno.test('JSX: number', async () => {
   const html = <div tabindex={1}></div>
 

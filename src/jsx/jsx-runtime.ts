@@ -9,13 +9,18 @@ export type { JSX } from './jsx-dev-runtime'
 import { html, raw } from '../helper/html'
 import type { HtmlEscapedString, StringBuffer, HtmlEscaped } from '../utils/html'
 import { escapeToBuffer, stringBufferToString } from '../utils/html'
+import { booleanAttributes } from './base'
 import { isValidAttributeName, styleObjectForEach } from './utils'
 
 export { html as jsxTemplate }
 
 export const jsxAttr = (
   key: string,
-  v: string | Promise<string> | Record<string, string | number | null | undefined | boolean>
+  v:
+    | string
+    | Promise<string>
+    | Record<string, string | number | null | undefined | boolean>
+    | boolean
 ): HtmlEscapedString | Promise<HtmlEscapedString> => {
   if (!isValidAttributeName(key)) {
     return raw('')
@@ -38,6 +43,16 @@ export const jsxAttr = (
     return raw('')
   } else if (typeof v === 'number' || (v as unknown as HtmlEscaped).isEscaped) {
     buffer[0] += `${v}"`
+  } else if (typeof v === 'boolean') {
+    if (booleanAttributes.includes(key)) {
+      if (v) {
+        buffer[0] += '"'
+      } else {
+        return raw('')
+      }
+    } else {
+      buffer[0] += `${v}"`
+    }
   } else if (v instanceof Promise) {
     buffer.unshift('"', v)
   } else {
