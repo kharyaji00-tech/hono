@@ -62,6 +62,66 @@ describe('Get with a suffix wildcard', () => {
     node.insert('get', '/assets*', 'assets')
     expect(node.search('get', '/assets/app.js')[0]).toEqual([['assets', {}]])
   })
+
+  it('reaches the deeper handler under a suffix wildcard', () => {
+    const node = new Node()
+    node.insert('get', '/assets*/x', 'literal')
+    node.insert('get', '/assets*', 'assets')
+    const [res] = node.search('get', '/assetsfoo/x')
+    expect(res.map((r) => r[0]).sort()).toEqual(['assets', 'literal'])
+  })
+})
+
+describe('Mid-path suffix wildcard', () => {
+  it('matches a segment after a non-terminal suffix wildcard', () => {
+    const node = new Node()
+    node.insert('get', '/x*/y', 'x-star-y')
+    expect(node.search('get', '/xz/y')[0]).toEqual([['x-star-y', {}]])
+    expect(node.search('get', '/x/y')[0]).toEqual([['x-star-y', {}]])
+    expect(node.search('get', '/xzzz/y')[0]).toEqual([['x-star-y', {}]])
+  })
+
+  it('matches a longer prefix before the suffix wildcard', () => {
+    const node = new Node()
+    node.insert('get', '/assets*/x', 'assets-x')
+    expect(node.search('get', '/assetsfoo/x')[0]).toEqual([['assets-x', {}]])
+    expect(node.search('get', '/assets/x')[0]).toEqual([['assets-x', {}]])
+  })
+
+  it('does not match when the prefix is too short', () => {
+    const node = new Node()
+    node.insert('get', '/assets*/x', 'assets-x')
+    expect(node.search('get', '/asset/x')[0]).toEqual([])
+  })
+
+  it('does not match when a later segment differs', () => {
+    const node = new Node()
+    node.insert('get', '/x*/y', 'x-star-y')
+    expect(node.search('get', '/xz/z')[0]).toEqual([])
+    expect(node.search('get', '/y')[0]).toEqual([])
+  })
+
+  it('keeps a `*` that is not at the end of a segment as a literal', () => {
+    const node = new Node()
+    node.insert('get', '/x*y/z', 'literal')
+    expect(node.search('get', '/x*y/z')[0]).toEqual([['literal', {}]])
+    expect(node.search('get', '/xz/y/z')[0]).toEqual([])
+  })
+
+  it('supports nested mid-path suffix wildcards', () => {
+    const node = new Node()
+    node.insert('get', '/a*/b*/c', 'abc')
+    expect(node.search('get', '/azz/bss/c')[0]).toEqual([['abc', {}]])
+    expect(node.search('get', '/a/b/c')[0]).toEqual([['abc', {}]])
+  })
+
+  it('continues traversal when the suffix wildcard has a parameter sibling', () => {
+    const node = new Node()
+    node.insert('get', '/x*/y', 'x-star-y')
+    node.insert('get', '/x/:id', 'param')
+    expect(node.search('get', '/xz/y')[0]).toEqual([['x-star-y', {}]])
+    expect(node.search('get', '/x/foo')[0]).toEqual([['param', { id: 'foo' }]])
+  })
 })
 
 describe('Basic Usage', () => {

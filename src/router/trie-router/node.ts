@@ -35,9 +35,7 @@ export class Node<T> {
     let i = 0
     for (const p of parts) {
       const nextP = parts[++i]
-      const pattern =
-        getPattern(p, nextP) ||
-        (nextP === undefined && p && p.indexOf('*') === p.length - 1 ? p : null)
+      const pattern = getPattern(p, nextP) || (p && p.indexOf('*') === p.length - 1 ? p : null)
       const isParam = Array.isArray(pattern)
       const key = isParam ? pattern[0] : pattern || p
 
@@ -127,10 +125,8 @@ export class Node<T> {
           if (typeof pattern === 'string') {
             if (pattern === '*' || part.startsWith(pattern.slice(0, -1))) {
               this.#pushHandlerSets(handlerSets, child, method, node.#params)
-              if (pattern === '*') {
-                child.#params = params
-                tempNodes.push(child)
-              }
+              child.#params = params
+              tempNodes.push(child)
             }
             continue
           }
