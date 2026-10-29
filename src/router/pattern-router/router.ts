@@ -10,6 +10,20 @@ export class PatternRouter<T> implements Router<T> {
   #routes: Route<T>[] = []
 
   add(method: string, path: string, handler: T) {
+    // A trailing param label glued to `*` (e.g. `/files/:filepath*` or
+    // `/:id*`) is the path-to-regexp "rest of path" idiom (zero or more
+    // segments). Without special handling it falls into the bare-`*` suffix
+    // branch and compiles to an unanchored `^/files/(?<filepath>[^/]+)`, which
+    // prefix-matches deeper paths (`/files/a/b`) with a truncated param
+    // (`filepath: "a"`) and silently shadows more specific routes registered
+    // later. Rewrite it to the equivalent optional multi-segment param
+    // `:label{.+}?` so the existing optional-param handling below compiles it
+    // with the full remaining path captured into `label` and a proper
+    // end-anchor.
+    const rest = path.match(/\/:(\w+)\*$/)
+    if (rest) {
+      path = `${path.slice(0, -rest[0].length)}/:${rest[1]}{.+}?`
+    }
     const suffix = path.endsWith('/*') ? '(?:$|/)' : path.endsWith('*') ? '' : '/?$'
     path = path.replace(/\*$/, '')
     if (path.at(-1) === '?') {
