@@ -1278,4 +1278,34 @@ d.replaceWith(c.content)
       ).toBe('[object Promise]')
     })
   })
+
+  describe('async function component sibling alongside a suspending child', () => {
+    it('renders both the async sibling and the use() suspender (no "[object Promise]")', async () => {
+      const data = new Promise<string>((resolve) => setTimeout(() => resolve('susp-data'), 10))
+      const Suspender = () => {
+        const v = use(data)
+        return <div>{v}</div>
+      }
+      const AsyncFC = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        return <div>async-fc</div>
+      }
+
+      const html = await drainStream(
+        renderToReadableStream(
+          <Suspense fallback={<p>loading</p>}>
+            <AsyncFC />
+            <Suspender />
+          </Suspense>
+        )
+      )
+
+      expect(html).not.toContain('[object Promise]')
+      expect(html).toContain('<div>async-fc</div>')
+      expect(html).toContain('<div>susp-data</div>')
+      expect(replacementResult(`<html><body>${html}</body></html>`)).toBe(
+        '<div>async-fc</div><div>susp-data</div>'
+      )
+    })
+  })
 })

@@ -933,4 +933,39 @@ d.remove()
       ).toBe('[object Promise]')
     })
   })
+
+  describe('streaming : async sibling alongside a suspending child', () => {
+    it('renders the async sibling content alongside a suspender (no "[object Promise]")', async () => {
+      let resolved = false
+      const Suspender = () => {
+        if (!resolved) {
+          throw new Promise<void>((resolve) =>
+            setTimeout(() => {
+              resolved = true
+              resolve()
+            }, 10)
+          )
+        }
+        return <div>ok-data</div>
+      }
+      const AsyncFC = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        return <div>async-fc</div>
+      }
+
+      const html = await drainStream(
+        renderToReadableStream(
+          <ErrorBoundary fallback={<p>error</p>}>
+            <AsyncFC />
+            <Suspender />
+          </ErrorBoundary>
+        )
+      )
+
+      expect(html).not.toContain('[object Promise]')
+      expect(html).toContain('<div>async-fc</div>')
+      expect(html).toContain('<div>ok-data</div>')
+      expect(html).toContain('<div>async-fc</div><div>ok-data</div>')
+    })
+  })
 })
