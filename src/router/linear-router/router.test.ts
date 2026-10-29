@@ -28,6 +28,13 @@ describe('LinearRouter', () => {
         reason: 'LinearRouter allows trailing slashes',
         tests: ['Trailing slash > GET /book/'],
       },
+      {
+        reason:
+          'LinearRouter drops a literal `?` mid-path instead of treating it as a static character',
+        tests: [
+          'regex meta characters as literal static characters > GET /a?b/zz matches its own literal path with params',
+        ],
+      },
     ],
     newRouter: () => new LinearRouter(),
   })
