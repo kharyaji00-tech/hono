@@ -425,6 +425,25 @@ export const runTest = ({
       })
     })
 
+    describe('Mid-path suffix wildcard', () => {
+      beforeEach(() => {
+        router.add('GET', '/x*/y', 'x-star-y')
+        router.add('GET', '/assets*/x', 'assets-star-x')
+      })
+
+      it('GET /xz/y', async () => {
+        const res = match('GET', '/xz/y')
+        expect(res.length).toBe(1)
+        expect(res[0].handler).toEqual('x-star-y')
+      })
+
+      it('GET /assetsfoo/x', async () => {
+        const res = match('GET', '/assetsfoo/x')
+        expect(res.length).toBe(1)
+        expect(res[0].handler).toEqual('assets-star-x')
+      })
+    })
+
     describe('Trailing wildcard', () => {
       beforeEach(() => {
         router.add('GET', '/path/*', 'path')

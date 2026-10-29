@@ -17,6 +17,13 @@ describe('Pattern', () => {
         reason: 'PatternRouter allows trailing slashes',
         tests: ['Trailing slash > GET /book/'],
       },
+      {
+        reason: 'PatternRouter does not support mid-path suffix wildcards',
+        tests: [
+          'Mid-path suffix wildcard > GET /xz/y',
+          'Mid-path suffix wildcard > GET /assetsfoo/x',
+        ],
+      },
     ],
     newRouter: () => new PatternRouter(),
   })
