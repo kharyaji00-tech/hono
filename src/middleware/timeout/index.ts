@@ -43,7 +43,11 @@ export const timeout = (
     let timer: number | undefined
     const timeoutPromise = new Promise<void>((_, reject) => {
       timer = setTimeout(() => {
-        reject(typeof exception === 'function' ? exception(context) : exception)
+        try {
+          reject(typeof exception === 'function' ? exception(context) : exception)
+        } catch (error) {
+          reject(error)
+        }
       }, duration) as unknown as number
     })
 

@@ -67,4 +67,58 @@ describe('Timeout API', () => {
     expect(res.status).toBe(200)
     expect(await res.text()).toContain('This should not show up')
   })
+
+  describe('Throwing exception factory', () => {
+    it('Should not crash the process with an uncaughtException when the factory throws', async () => {
+      let uncaught: Error | null = null
+      const handler = (err: Error) => {
+        uncaught = err
+      }
+      process.once('uncaughtException', handler)
+
+      const crashingApp = new Hono()
+      crashingApp.use(
+        '/slow-endpoint/throwing',
+        timeout(50, () => {
+          throw new Error('factory-boom')
+        })
+      )
+      crashingApp.get('/slow-endpoint/throwing', async (c) => {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        return c.text('This should not show up')
+      })
+
+      try {
+        const res = await crashingApp.request('http://localhost/slow-endpoint/throwing')
+        expect(res).not.toBeNull()
+        expect(res.status).toBe(500)
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(uncaught).toBeNull()
+      } finally {
+        process.removeListener('uncaughtException', handler)
+      }
+    })
+
+    it('Should preserve the thrown error as a rejection routed through the middleware chain', async () => {
+      const crashingApp = new Hono()
+      crashingApp.onError((err, c) => {
+        return c.text(`caught: ${err.message}`, 500)
+      })
+      crashingApp.use(
+        '/slow-endpoint/throwing',
+        timeout(50, () => {
+          throw new Error('factory-boom')
+        })
+      )
+      crashingApp.get('/slow-endpoint/throwing', async (c) => {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        return c.text('This should not show up')
+      })
+
+      const res = await crashingApp.request('http://localhost/slow-endpoint/throwing')
+      expect(res).not.toBeNull()
+      expect(res.status).toBe(500)
+      expect(await res.text()).toBe('caught: factory-boom')
+    })
+  })
 })
