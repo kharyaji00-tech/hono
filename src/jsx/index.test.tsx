@@ -1331,11 +1331,14 @@ describe('Context', () => {
       expect(chunks).toEqual([
         '<template id="H:0"></template><span>red</span><!--/$-->',
         `<template data-hono-target="H:0"><span>dark</span><span>black</span></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:0')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,

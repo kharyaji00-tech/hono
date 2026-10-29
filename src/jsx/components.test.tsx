@@ -381,11 +381,14 @@ d.parentElement.insertBefore(c.content,d.nextSibling)
 })(document)
 </script>`,
         `<template data-hono-target="H:${suspenseCounter}"><div>Hello</div></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script><script>
@@ -432,11 +435,14 @@ d.parentElement.insertBefore(c.content,d.nextSibling)
 })(document)
 </script>`,
         `<template data-hono-target="H:${suspenseCounter}"><div>Hello</div></template><script nonce="test-nonce">
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script><script>
