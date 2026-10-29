@@ -352,6 +352,99 @@ describe('Serve Static Middleware', () => {
     expect(await res.text()).toBe('Hello in static/hello.jpg')
   })
 
+  describe('precompressed stream cancellation', () => {
+    const encode = (s: string) => new TextEncoder().encode(s)
+
+    const makeStream = (label: string, onCancel: (label: string) => void) =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encode(label))
+          controller.close()
+        },
+        cancel() {
+          onCancel(label)
+        },
+      })
+
+    const makeGetContent =
+      (cancelled: string[], variants: Record<string, boolean>) => async (path: string) => {
+        if (variants.gz && path.endsWith('.gz')) {
+          return makeStream('gz:' + path, (l) => cancelled.push(l))
+        }
+        if (variants.br && path.endsWith('.br')) {
+          return makeStream('br:' + path, (l) => cancelled.push(l))
+        }
+        if (variants.zstd && path.endsWith('.zst')) {
+          return makeStream('zstd:' + path, (l) => cancelled.push(l))
+        }
+        if (path.endsWith('.gz') || path.endsWith('.br') || path.endsWith('.zst')) {
+          return null
+        }
+        return makeStream('raw:' + path, (l) => cancelled.push(l))
+      }
+
+    it('Cancels the abandoned uncompressed stream when a precompressed variant is selected', async () => {
+      const cancelled: string[] = []
+      const getContent = makeGetContent(cancelled, { gz: true })
+      const app = new Hono().use('*', baseServeStatic({ getContent, precompressed: true }))
+
+      const res = await app.request('/static/hello.html', {
+        headers: { 'Accept-Encoding': 'gzip' },
+      })
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get('Content-Encoding')).toBe('gzip')
+      expect(res.headers.get('Vary')).toBe('Accept-Encoding')
+      expect(await res.text()).toBe('gz:static/hello.html.gz')
+      expect(cancelled).toEqual(['raw:static/hello.html'])
+    })
+
+    it('Does not cancel the uncompressed stream served as the body when no variant matches', async () => {
+      const cancelled: string[] = []
+      const getContent = makeGetContent(cancelled, {})
+      const app = new Hono().use('*', baseServeStatic({ getContent, precompressed: true }))
+
+      const res = await app.request('/static/hello.html', {
+        headers: { 'Accept-Encoding': 'gzip, br, zstd' },
+      })
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get('Content-Encoding')).toBeNull()
+      expect(await res.text()).toBe('raw:static/hello.html')
+      expect(cancelled).toEqual([])
+    })
+
+    it('Does not cancel the uncompressed stream when the precompressed option is disabled', async () => {
+      const cancelled: string[] = []
+      const getContent = makeGetContent(cancelled, { gz: true })
+      const app = new Hono().use('*', baseServeStatic({ getContent, precompressed: false }))
+
+      const res = await app.request('/static/hello.html', {
+        headers: { 'Accept-Encoding': 'gzip' },
+      })
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get('Content-Encoding')).toBeNull()
+      expect(await res.text()).toBe('raw:static/hello.html')
+      expect(cancelled).toEqual([])
+    })
+
+    it('Only the first matching encoding is probed and the abandoned stream is cancelled once', async () => {
+      const cancelled: string[] = []
+      const getContent = makeGetContent(cancelled, { br: true, gz: true })
+      const app = new Hono().use('*', baseServeStatic({ getContent, precompressed: true }))
+
+      const res = await app.request('/static/hello.html', {
+        headers: { 'Accept-Encoding': 'br, gzip' },
+      })
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get('Content-Encoding')).toBe('br')
+      expect(await res.text()).toBe('br:static/hello.html.br')
+      expect(cancelled).toEqual(['raw:static/hello.html'])
+    })
+  })
+
   it('Should return response object content as-is', async () => {
     const body = new ReadableStream()
     const response = new Response(body)
