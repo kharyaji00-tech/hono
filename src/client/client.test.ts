@@ -2042,6 +2042,44 @@ describe('Custom buildSearchParams', () => {
     expect(data.queryString).toBe('?q=test&tags=tag1&tags=tag2')
   })
 
+  it('Should use per-request buildSearchParams for query serialization', async () => {
+    const client = hc<AppType>('http://localhost')
+    const res = await client.search.$get(
+      { query: { q: 'test', tags: ['tag1', 'tag2', 'tag3'] } },
+      { buildSearchParams: customBuildSearchParams }
+    )
+    const data = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(data.queryString).toBe('?q=test&tags%5B%5D=tag1&tags%5B%5D=tag2&tags%5B%5D=tag3')
+  })
+
+  it('Should use per-request buildSearchParams even when hc-level buildSearchParams is set', async () => {
+    const hcLevelBuildSearchParams = (query: Record<string, string | string[]>) => {
+      const searchParams = new URLSearchParams()
+      for (const [k, v] of Object.entries(query)) {
+        if (v === undefined) {
+          continue
+        }
+        if (Array.isArray(v)) {
+          v.forEach((item) => searchParams.append(`${k}-hc`, item))
+        } else {
+          searchParams.set(`${k}-hc`, v)
+        }
+      }
+      return searchParams
+    }
+    const client = hc<AppType>('http://localhost', { buildSearchParams: hcLevelBuildSearchParams })
+    const res = await client.search.$get(
+      { query: { q: 'test', tags: ['tag1', 'tag2'] } },
+      { buildSearchParams: customBuildSearchParams }
+    )
+    const data = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(data.queryString).toBe('?q=test&tags%5B%5D=tag1&tags%5B%5D=tag2')
+  })
+
   it('Should use custom buildSearchParams in $url() method', () => {
     const client = hc<AppType>('http://localhost', { buildSearchParams: customBuildSearchParams })
     const url = client.search.$url({ query: { q: 'test', tags: ['tag1', 'tag2'] } })
