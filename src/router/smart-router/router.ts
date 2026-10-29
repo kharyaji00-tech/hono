@@ -36,6 +36,16 @@ export class SmartRouter<T> implements Router<T> {
           router.add(...routes[i])
         }
         res = router.match(method, path)
+        // A successful match for the current request does not imply the
+        // candidate can represent the entire route set. Some routers only
+        // throw UnsupportedPathError for routes whose method matches the
+        // request (e.g. LinearRouter skips other-method routes), so an
+        // unrelated first request could otherwise pin a router that will
+        // crash later requests. Probe every registered route with its own
+        // method before pinning to prove the route set is representable.
+        for (let i = 0, len = routes.length; i < len; i++) {
+          router.match(routes[i][0], routes[i][1])
+        }
       } catch (e) {
         if (e instanceof UnsupportedPathError) {
           continue

@@ -6,6 +6,25 @@ describe('hono/quick preset', () => {
     const app = new Hono()
     expect(getRouterName(app)).toBe('SmartRouter + LinearRouter')
   })
+
+  it('Serves a label+star route regardless of which route is requested first', async () => {
+    const app = new Hono()
+    app.get('/health', (c) => c.text('ok'))
+    app.post('/files/:id/*', (c) => c.text('file'))
+
+    // A benign first request must not pin LinearRouter and break the later
+    // unrepresentable request (it previously threw an uncaught
+    // UnsupportedPathError that bypassed `app.onError`).
+    const r1 = await app.request('/health', { method: 'GET' })
+    expect(r1.status).toBe(200)
+    expect(await r1.text()).toBe('ok')
+
+    const r2 = await app.request('/files/1/a', { method: 'POST' })
+    expect(r2.status).toBe(200)
+    expect(await r2.text()).toBe('file')
+
+    expect(getRouterName(app)).toBe('SmartRouter + TrieRouter')
+  })
 })
 
 describe('Generics for Bindings and Variables', () => {
