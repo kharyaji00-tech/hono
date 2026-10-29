@@ -2281,6 +2281,23 @@ describe('Multiple handler', () => {
         expect(await res.text()).toBe('id: 789, action: delete')
       })
     })
+
+    describe('empty-matchable param regexp falls back to TrieRouter', () => {
+      it('Should not crash and should match the empty segment', async () => {
+        const app = new Hono()
+        app.get('/static/:v{[0-9]?}/end', (c) => c.text(`v:${c.req.param('v')}`))
+
+        const empty = await app.request('/static//end')
+        expect(empty.status).toBe(200)
+        expect(await empty.text()).toBe('v:')
+
+        const filled = await app.request('/static/1/end')
+        expect(filled.status).toBe(200)
+        expect(await filled.text()).toBe('v:1')
+
+        expect(app.router.name).toBe('SmartRouter + TrieRouter')
+      })
+    })
   })
 })
 

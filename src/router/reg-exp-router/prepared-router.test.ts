@@ -1,4 +1,4 @@
-import { METHOD_NAME_ALL } from '../../router'
+import { METHOD_NAME_ALL, UnsupportedPathError } from '../../router'
 import { runTest } from '../common.case.test'
 import { buildInitParams, serializeInitParams, PreparedRegExpRouter } from './prepared-router'
 
@@ -151,4 +151,11 @@ describe('buildInitParams() and serializeInitParams()', () => {
     ])
     expect((0, eval)(serializeInitParams(params))).toEqual(params)
   })
+
+  it.each([['/static/:v{[0-9]?}/end'], ['/files/:name{.*}']])(
+    'should throw UnsupportedPathError for empty-matchable param %s',
+    (path) => {
+      expect(() => buildInitParams({ paths: [path] })).toThrowError(UnsupportedPathError)
+    }
+  )
 })
