@@ -648,11 +648,14 @@ describe('CSS Helper', () => {
       expect(res).not.toBeNull()
       expect(await res.text()).toBe(
         `<style id="hono-css"></style><template id="H:0"></template><p>Loading...</p><!--/$--><script>document.querySelector('#hono-css').textContent+=".css-2458908649{background-color:blue}"</script><template data-hono-target="H:0"><h1 class="css-2458908649">Hello!</h1></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:0')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`
@@ -664,11 +667,14 @@ d.replaceWith(c.content)
       expect(res).not.toBeNull()
       expect(await res.text()).toBe(
         `<style id="hono-css" nonce="1234"></style><template id="H:1"></template><p>Loading...</p><!--/$--><script nonce="1234">document.querySelector('#hono-css').textContent+=".css-2458908649{background-color:blue}"</script><template data-hono-target="H:1"><h1 class="css-2458908649">Hello!</h1></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:1')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`

@@ -273,11 +273,14 @@ describe('JSX renderer', () => {
     expect(chunk).toEqual([
       '<!DOCTYPE html><html><body><template id="H:0"></template><p>Loading...</p><!--/$--></body></html>',
       `<template data-hono-target="H:0"><p>Hello Hono!</p></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:0')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
@@ -342,11 +345,14 @@ d.replaceWith(c.content)
     expect(chunk).toEqual([
       '<!DOCTYPE html><html><body><template id="H:1"></template><p>Loading...</p><!--/$--></body></html>',
       `<template data-hono-target="H:1"><p>Hello Hono again!</p></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:1')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,

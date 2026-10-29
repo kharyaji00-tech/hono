@@ -42,6 +42,55 @@ const serializeBoundaryChild = (child: Child): string | Promise<string> =>
         ? renderUntrustedObject(child)
         : child.toString()
 
+const suspendBoundaryOpenRe = /<template id="H:\d+"><\/template>/g
+const suspendBoundaryClose = '<!--/$-->'
+
+/**
+ * Replace a Suspense boundary's pending shell — `<template id="H:${index}"></template>
+ * …fallback…<!--/$-->` — in `buffer[0]` with the resolved `content`.
+ *
+ * A fallback may itself contain nested Suspense boundaries, each emitting its own
+ * earlier `<!--/$-->`, so a lazy match to the *first* `<!--/$-->` would pair with a
+ * nested closer and leave fallback remnants in the output. We therefore depth-count
+ * nested boundary openers (`<template id="H:\d+"></template>`) and closers
+ * (`<!--/$-->`) to locate this boundary's own balancing closer and replace the whole
+ * region atomically.
+ */
+const replaceSuspenseBoundaryContent = (buffer: [string], index: number, content: string): void => {
+  const str = buffer[0]
+  const openTag = `<template id="H:${index}"></template>`
+  const start = str.indexOf(openTag)
+  if (start === -1) {
+    return
+  }
+  let pos = start + openTag.length
+  let depth = 1
+  let end = -1
+  while (depth > 0) {
+    suspendBoundaryOpenRe.lastIndex = pos
+    const nextOpen = suspendBoundaryOpenRe.exec(str)
+    const nextClose = str.indexOf(suspendBoundaryClose, pos)
+    if (nextClose === -1) {
+      return
+    }
+    if (nextOpen !== null && nextOpen.index < nextClose) {
+      depth++
+      pos = nextOpen.index + nextOpen[0].length
+    } else {
+      depth--
+      pos = nextClose + suspendBoundaryClose.length
+      if (depth === 0) {
+        end = pos
+        break
+      }
+    }
+  }
+  if (end === -1) {
+    return
+  }
+  buffer[0] = str.slice(0, start) + content + str.slice(end)
+}
+
 /**
  * @experimental
  * `Suspense` is an experimental feature.
@@ -108,21 +157,21 @@ export const Suspense: FC<PropsWithChildren<{ fallback: any }>> = async ({
           htmlArray = htmlArray.flat()
           const content = htmlArray.join('')
           if (buffer) {
-            buffer[0] = buffer[0].replace(
-              new RegExp(`<template id="H:${index}"></template>.*?<!--/\\$-->`, 's'),
-              () => content
-            )
+            replaceSuspenseBoundaryContent(buffer, index, content)
           }
           let html = buffer
             ? ''
             : `<template data-hono-target="H:${index}">${content}</template><script${
                 nonce ? ` nonce="${nonce}"` : ''
               }>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${index}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`

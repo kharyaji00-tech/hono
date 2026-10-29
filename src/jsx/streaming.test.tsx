@@ -125,11 +125,14 @@ describe('Streaming', () => {
     expect(chunks).toEqual([
       `<template id="H:${suspenseCounter}"></template><p>Loading...</p><!--/$-->`,
       `<template data-hono-target="H:${suspenseCounter}"><h1>Hello</h1></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
@@ -169,11 +172,14 @@ d.replaceWith(c.content)
     expect(chunks).toEqual([
       `<template id="H:${suspenseCounter}"></template><p>Loading...</p><!--/$-->`,
       `<template data-hono-target="H:${suspenseCounter}"><h1>Hello</h1></template><script nonce="test-nonce">
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
@@ -217,11 +223,14 @@ d.replaceWith(c.content)
     expect(chunks).toEqual([
       `<template id="H:${suspenseCounter}"></template><p>Loading...</p><!--/$-->`,
       `<template data-hono-target="H:${suspenseCounter}"><p>thrown a promise then resolved</p></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
@@ -341,11 +350,14 @@ d.replaceWith(c.content)
     expect(chunks).toEqual([
       `<template id="H:${suspenseCounter}"></template><p>Loading...</p><!--/$-->`,
       `<template data-hono-target="H:${suspenseCounter}"><h1>Hello</h1></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
@@ -405,11 +417,14 @@ d.replaceWith(c.content)
     expect(chunks).toEqual([
       `<template id="H:${suspenseCounter}"></template><p>Loading...</p><!--/$-->`,
       `<template data-hono-target="H:${suspenseCounter}"><h1>Hello</h1></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
@@ -497,11 +512,14 @@ d.replaceWith(c.content)
     expect(chunks).toEqual([
       `<template id="H:${suspenseCounter}"></template><p>Loading...</p><!--/$-->`,
       `<template data-hono-target="H:${suspenseCounter}"><p></p></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
@@ -531,11 +549,14 @@ d.replaceWith(c.content)
     expect(chunks).toEqual([
       `<template id="H:${suspenseCounter}"></template><p>Loading...</p><!--/$-->`,
       `<template data-hono-target="H:${suspenseCounter}"><p></p></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
@@ -658,11 +679,14 @@ d.replaceWith(c.content)
     expect(chunks).toEqual([
       `<template id="H:${suspenseCounter}"></template><p>Loading...</p><!--/$-->`,
       `<template data-hono-target="H:${suspenseCounter}"><h1>Hello</h1><h2>World</h2></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
@@ -704,11 +728,14 @@ d.replaceWith(c.content)
     expect(chunks).toEqual([
       `<template id="H:${suspenseCounter}"></template>Loading<span>...</span><!--/$-->`,
       `<template data-hono-target="H:${suspenseCounter}"><h1>Hello</h1></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
@@ -789,20 +816,26 @@ d.replaceWith(c.content)
       `<template data-hono-target="H:${suspenseCounter}"><h1>Hello</h1><template id=\"H:${
         suspenseCounter + 1
       }\"></template><p>Loading sub content...</p><!--/$--></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
       `<template data-hono-target="H:${suspenseCounter + 1}"><h2>World</h2></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter + 1}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
@@ -812,6 +845,205 @@ d.replaceWith(c.content)
       '<h1>Hello</h1><h2>World</h2>'
     )
     suspenseCounter++
+  })
+
+  it('Suspense in a fallback: streaming replaces the whole fallback (outer resolves first)', async () => {
+    let resolveOuter!: (v: HtmlEscapedString | PromiseLike<HtmlEscapedString>) => void
+    let resolveInner!: (v: HtmlEscapedString | PromiseLike<HtmlEscapedString>) => void
+    const Outer = () => new Promise<HtmlEscapedString>((r) => (resolveOuter = r))
+    const Inner = () => new Promise<HtmlEscapedString>((r) => (resolveInner = r))
+
+    const reader = renderToReadableStream(
+      <Suspense
+        fallback={
+          <Suspense fallback={<p>inner loading</p>}>
+            <Inner />
+          </Suspense>
+        }
+      >
+        <Outer />
+      </Suspense>
+    ).getReader()
+    const dec = new TextDecoder()
+    const chunks: string[] = []
+
+    let r = await reader.read()
+    chunks.push(dec.decode(r.value as Uint8Array))
+    expect(chunks[0]).toBe(
+      `<template id="H:${suspenseCounter}"></template><template id="H:${
+        suspenseCounter + 1
+      }"></template><p>inner loading</p><!--/$--><!--/$-->`
+    )
+    suspenseCounter++ // outer + inner = 2 boundaries; afterEach accounts for one
+
+    // outer resolves while the inner boundary is still pending
+    resolveOuter(<div>OUTER-RESOLVED</div>)
+    r = await reader.read()
+    chunks.push(dec.decode(r.value as Uint8Array))
+    // inner resolves afterwards; must become a clean no-op, not output corruption
+    resolveInner(<p>inner</p>)
+    for (let done = false; !done;) {
+      r = await reader.read()
+      done = r.done ?? false
+      if (r.value) {
+        chunks.push(dec.decode(r.value))
+      }
+    }
+
+    // No stray `<!--/$-->`, no unbalanced tags, no leaked fallback content.
+    expect(replacementResult(`<html><body>${chunks.join('')}</body></html>`)).toBe(
+      '<div>OUTER-RESOLVED</div>'
+    )
+  })
+
+  it('Suspense in a fallback: streaming does not leak trailing fallback siblings', async () => {
+    let resolveOuter!: (v: HtmlEscapedString | PromiseLike<HtmlEscapedString>) => void
+    let resolveInner!: (v: HtmlEscapedString | PromiseLike<HtmlEscapedString>) => void
+    const Outer = () => new Promise<HtmlEscapedString>((r) => (resolveOuter = r))
+    const Inner = () => new Promise<HtmlEscapedString>((r) => (resolveInner = r))
+
+    const reader = renderToReadableStream(
+      <Suspense
+        fallback={
+          <>
+            <Suspense fallback={<p>inner loading</p>}>
+              <Inner />
+            </Suspense>
+            <p>TRAILER</p>
+          </>
+        }
+      >
+        <Outer />
+      </Suspense>
+    ).getReader()
+    const dec = new TextDecoder()
+    const chunks: string[] = []
+
+    let r = await reader.read()
+    chunks.push(dec.decode(r.value as Uint8Array))
+    expect(chunks[0]).toBe(
+      `<template id="H:${suspenseCounter}"></template><template id="H:${
+        suspenseCounter + 1
+      }"></template><p>inner loading</p><!--/$--><p>TRAILER</p><!--/$-->`
+    )
+    suspenseCounter++
+
+    resolveOuter(<div>OUTER</div>)
+    r = await reader.read()
+    chunks.push(dec.decode(r.value as Uint8Array))
+    resolveInner(<p>inner</p>)
+    for (let done = false; !done;) {
+      r = await reader.read()
+      done = r.done ?? false
+      if (r.value) {
+        chunks.push(dec.decode(r.value))
+      }
+    }
+
+    // Before the fix this leaked `<p>TRAILER</p>` and a stray `<!--/$-->`.
+    expect(replacementResult(`<html><body>${chunks.join('')}</body></html>`)).toBe(
+      '<div>OUTER</div>'
+    )
+  })
+
+  it('Suspense in a fallback: streaming resolves a doubly-nested fallback at any depth', async () => {
+    let resolveOuter!: (v: HtmlEscapedString | PromiseLike<HtmlEscapedString>) => void
+    let resolveMid!: (v: HtmlEscapedString | PromiseLike<HtmlEscapedString>) => void
+    let resolveInner!: (v: HtmlEscapedString | PromiseLike<HtmlEscapedString>) => void
+    const Outer = () => new Promise<HtmlEscapedString>((r) => (resolveOuter = r))
+    const Mid = () => new Promise<HtmlEscapedString>((r) => (resolveMid = r))
+    const Inner = () => new Promise<HtmlEscapedString>((r) => (resolveInner = r))
+
+    const reader = renderToReadableStream(
+      <Suspense
+        fallback={
+          <Suspense
+            fallback={
+              <Suspense fallback={<p>i</p>}>
+                <Inner />
+              </Suspense>
+            }
+          >
+            <Mid />
+          </Suspense>
+        }
+      >
+        <Outer />
+      </Suspense>
+    ).getReader()
+    const dec = new TextDecoder()
+    const chunks: string[] = []
+
+    let r = await reader.read()
+    chunks.push(dec.decode(r.value as Uint8Array))
+    expect(chunks[0]).toBe(
+      `<template id="H:${suspenseCounter}"></template><template id="H:${
+        suspenseCounter + 1
+      }"></template><template id="H:${suspenseCounter + 2}"></template><p>i</p><!--/$--><!--/$--><!--/$-->`
+    )
+    suspenseCounter += 2 // outer + mid + inner = 3 boundaries
+
+    resolveOuter(<div>OUTER</div>)
+    r = await reader.read()
+    chunks.push(dec.decode(r.value as Uint8Array))
+    resolveMid(<span>mid</span>)
+    resolveInner(<b>inner</b>)
+    for (let done = false; !done;) {
+      r = await reader.read()
+      done = r.done ?? false
+      if (r.value) {
+        chunks.push(dec.decode(r.value))
+      }
+    }
+
+    expect(replacementResult(`<html><body>${chunks.join('')}</body></html>`)).toBe(
+      '<div>OUTER</div>'
+    )
+  })
+
+  it('Suspense in a fallback: buffer path replaces the whole fallback (outer first)', async () => {
+    const Outer = () =>
+      new Promise<HtmlEscapedString>((r) => setTimeout(() => r(<div>OUTER-RESOLVED</div>), 10))
+    const Inner = () => new Promise<HtmlEscapedString>((r) => setTimeout(() => r(<p>inner</p>), 50))
+    const node = (
+      <Suspense
+        fallback={
+          <Suspense fallback={<p>inner loading</p>}>
+            <Inner />
+          </Suspense>
+        }
+      >
+        <Outer />
+      </Suspense>
+    )
+    const html = await stringify(node)
+    suspenseCounter++
+    expect(html).toBe('<div>OUTER-RESOLVED</div>')
+  })
+
+  it('Suspense in a fallback: buffer path does not leak trailing fallback siblings', async () => {
+    const Outer = () =>
+      new Promise<HtmlEscapedString>((r) => setTimeout(() => r(<div>OUTER</div>), 10))
+    const Inner = () => new Promise<HtmlEscapedString>((r) => setTimeout(() => r(<p>inner</p>), 50))
+    const node = (
+      <Suspense
+        fallback={
+          <>
+            <Suspense fallback={<p>inner loading</p>}>
+              <Inner />
+            </Suspense>
+            <p>TRAILER</p>
+          </>
+        }
+      >
+        <Outer />
+      </Suspense>
+    )
+    // Before the fix the buffer path (used by `c.html()` and `toSSG`) emitted
+    // `<div>OUTER</div><p>TRAILER</p><!--/$-->`.
+    const html = await stringify(node)
+    suspenseCounter++
+    expect(html).toBe('<div>OUTER</div>')
   })
 
   it('In multiple Suspense, go ahead in the order of resolved', async () => {
@@ -974,11 +1206,14 @@ d.replaceWith(c.content)
       expect(chunks).toEqual([
         `<template id="H:${suspenseCounter}"></template><p>Loading...</p><!--/$-->`,
         `<template data-hono-target="H:${suspenseCounter}"><h1>Hello from use()</h1></template><script>
-((d,c,n) => {
+((d,c,n,h) => {
 c=d.currentScript.previousSibling
 d=d.getElementById('H:${suspenseCounter}')
 if(!d)return
-do{n=d.nextSibling;n.remove()}while(n.nodeType!=8||n.nodeValue!='/$')
+h=0
+do{n=d.nextSibling
+if(n.nodeType==1&&n.tagName=='TEMPLATE'&&/^H:/.test(n.id))h++
+n.remove()}while(n.nodeType!=8||n.nodeValue!='/$'||--h>=0)
 d.replaceWith(c.content)
 })(document)
 </script>`,
