@@ -63,7 +63,8 @@ class ClientRequestImpl {
   ) => {
     if (args) {
       if (args.query) {
-        this.queryParams = this.buildSearchParams(args.query)
+        const buildSearchParams = opt?.buildSearchParams ?? this.buildSearchParams
+        this.queryParams = buildSearchParams(args.query)
       }
 
       if (args.form) {
